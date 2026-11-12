@@ -34,3 +34,15 @@ export const markAsRead = async (req: Request, res: Response): Promise<void> => 
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
   }
 };
+
+export const markAllAsRead = async (req: Request, res: Response): Promise<void> => {
+  try {
+    await Notification.update(
+      { isRead: true },
+      { where: { userId: req.user!.id, isRead: false } }
+    );
+    res.json({ success: true, data: { message: 'All notifications marked as read' } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};

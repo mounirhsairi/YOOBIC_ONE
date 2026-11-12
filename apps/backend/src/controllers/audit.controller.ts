@@ -113,3 +113,55 @@ export const submitAudit = async (req: Request, res: Response): Promise<void> =>
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
   }
 };
+
+export const updateTemplate = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const template = await FormTemplate.findOne({ where: { id: req.params.id, organizationId: orgId } });
+    if (!template) {
+      res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Template not found' } });
+      return;
+    }
+    await template.update(req.body);
+    res.json({ success: true, data: template });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const deleteTemplate = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const template = await FormTemplate.findOne({ where: { id: req.params.id, organizationId: orgId } });
+    if (!template) {
+      res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Template not found' } });
+      return;
+    }
+    template.isActive = false;
+    await template.save();
+    res.json({ success: true, data: { message: 'Template deactivated successfully' } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const getAudit = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const audit = await Audit.findOne({
+      where: { id: req.params.id, organizationId: orgId },
+      include: [
+        { model: FormTemplate, as: 'template' },
+        { model: Store, as: 'store' },
+        { model: User, as: 'auditor', attributes: ['id', 'firstName', 'lastName', 'email'] },
+      ],
+    });
+    if (!audit) {
+      res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Audit not found' } });
+      return;
+    }
+    res.json({ success: true, data: audit });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};

@@ -17,15 +17,7 @@
       "package": "com.yoobic.one"
     },
     "plugins": [
-      "expo-router",
-      "expo-secure-store",
-      "expo-sqlite",
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Allow YOOBIC ONE to access your camera to capture operational task evidence."
-        }
-      ]
+      "expo-router"
     ]
   }
 }

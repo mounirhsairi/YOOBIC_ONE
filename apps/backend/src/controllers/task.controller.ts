@@ -302,3 +302,76 @@ export const getTaskAnalytics = async (req: Request, res: Response): Promise<voi
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
   }
 };
+
+export const updateTask = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const { id } = req.params;
+
+    const task = await Task.findOne({ where: { id, organizationId: orgId } });
+    if (!task) {
+      res.status(404).json({ success: false, error: { code: 'TASK_NOT_FOUND', message: 'Task not found' } });
+      return;
+    }
+
+    const {
+      title,
+      description,
+      instructions,
+      priority,
+      status,
+      category,
+      startDate,
+      dueDate,
+      requiresValidation,
+      requiresPhotoEvidence,
+      requiresSignature,
+      estimatedDurationMinutes,
+      checklist,
+      storeId,
+      teamId,
+      assignedUserId,
+    } = req.body;
+
+    await task.update({
+      ...(title !== undefined && { title }),
+      ...(description !== undefined && { description }),
+      ...(instructions !== undefined && { instructions }),
+      ...(priority !== undefined && { priority }),
+      ...(status !== undefined && { status }),
+      ...(category !== undefined && { category }),
+      ...(startDate !== undefined && { startDate }),
+      ...(dueDate !== undefined && { dueDate }),
+      ...(requiresValidation !== undefined && { requiresValidation }),
+      ...(requiresPhotoEvidence !== undefined && { requiresPhotoEvidence }),
+      ...(requiresSignature !== undefined && { requiresSignature }),
+      ...(estimatedDurationMinutes !== undefined && { estimatedDurationMinutes }),
+      ...(checklist !== undefined && { checklist }),
+      ...(storeId !== undefined && { storeId }),
+      ...(teamId !== undefined && { teamId }),
+      ...(assignedUserId !== undefined && { assignedUserId }),
+    });
+
+    res.json({ success: true, data: task });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const deleteTask = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const { id } = req.params;
+
+    const task = await Task.findOne({ where: { id, organizationId: orgId } });
+    if (!task) {
+      res.status(404).json({ success: false, error: { code: 'TASK_NOT_FOUND', message: 'Task not found' } });
+      return;
+    }
+
+    await task.destroy();
+    res.json({ success: true, data: { message: 'Task deleted successfully' } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};

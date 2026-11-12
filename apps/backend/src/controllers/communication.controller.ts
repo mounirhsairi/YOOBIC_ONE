@@ -37,6 +37,36 @@ export const createAnnouncement = async (req: Request, res: Response): Promise<v
   }
 };
 
+export const updateAnnouncement = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const announcement = await Announcement.findOne({ where: { id: req.params.id, organizationId: orgId } });
+    if (!announcement) {
+      res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Announcement not found' } });
+      return;
+    }
+    await announcement.update(req.body);
+    res.json({ success: true, data: announcement });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const deleteAnnouncement = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const announcement = await Announcement.findOne({ where: { id: req.params.id, organizationId: orgId } });
+    if (!announcement) {
+      res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Announcement not found' } });
+      return;
+    }
+    await announcement.destroy();
+    res.json({ success: true, data: { message: 'Announcement deleted successfully' } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
 export const listCommunities = async (req: Request, res: Response): Promise<void> => {
   try {
     const orgId = req.tenant!.organizationId;
@@ -72,7 +102,16 @@ export const createCommunity = async (req: Request, res: Response): Promise<void
 
 export const listPosts = async (req: Request, res: Response): Promise<void> => {
   try {
+    const orgId = req.tenant!.organizationId;
     const { communityId } = req.params;
+
+    // P0 security fix: verify community belongs to this organization
+    const community = await Community.findOne({ where: { id: communityId, organizationId: orgId } });
+    if (!community) {
+      res.status(404).json({ success: false, error: { code: 'COMMUNITY_NOT_FOUND', message: 'Community not found in this organization' } });
+      return;
+    }
+
     const posts = await Post.findAll({
       where: { communityId },
       include: [
@@ -114,10 +153,20 @@ export const createPost = async (req: Request, res: Response): Promise<void> => 
 
 export const createComment = async (req: Request, res: Response): Promise<void> => {
   try {
+    const orgId = req.tenant!.organizationId;
     const { postId } = req.params;
     const parse = createCommentSchema.safeParse(req.body);
     if (!parse.success) {
       res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', details: parse.error.format() } });
+      return;
+    }
+
+    // P0 security fix: verify post belongs to a community in this organization
+    const post = await Post.findByPk(postId, {
+      include: [{ model: Community, as: 'community', where: { organizationId: orgId }, required: true }],
+    });
+    if (!post) {
+      res.status(404).json({ success: false, error: { code: 'POST_NOT_FOUND', message: 'Post not found in this organization' } });
       return;
     }
 
@@ -127,12 +176,8 @@ export const createComment = async (req: Request, res: Response): Promise<void> 
       authorId: req.user!.id,
     });
 
-    // Increment comments count on post
-    const post = await Post.findByPk(postId);
-    if (post) {
-      post.commentsCount += 1;
-      await post.save();
-    }
+    post.commentsCount += 1;
+    await post.save();
 
     res.status(201).json({ success: true, data: comment });
   } catch (error: any) {

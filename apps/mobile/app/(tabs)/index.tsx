@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,121 @@ import {
   Image,
   SafeAreaView,
   StatusBar,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../../src/context/AuthContext';
+import { mobileApiClient } from '../../src/services/api';
+import { offlineSyncEngine } from '../../src/services/offlineSync';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { user, orgId, currentOrg } = useAuth();
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+
+  const [analytics, setAnalytics] = useState<any>({
+    totalTasks: 0,
+    completionRate: 0,
+    overdueTasks: 0,
+    byStatus: { PENDING: 0, IN_PROGRESS: 0, SUBMITTED: 0, APPROVED: 0, REJECTED: 0 },
+  });
+  const [stores, setStores] = useState<any[]>([]);
+  const [communities, setCommunities] = useState<any[]>([]);
+
+  const loadData = useCallback(async () => {
+    try {
+      // 1. Fetch Task Analytics
+      const [analyticsRes, tasksRes, storesRes, commRes] = await Promise.allSettled([
+        mobileApiClient.getTaskAnalytics(),
+        mobileApiClient.getTasks(),
+        mobileApiClient.getStores(),
+        mobileApiClient.listCommunities(),
+      ]);
+
+      let isAnyOnlineSuccess = false;
+
+      if (analyticsRes.status === 'fulfilled' && analyticsRes.value.success && analyticsRes.value.data) {
+        setAnalytics(analyticsRes.value.data);
+        isAnyOnlineSuccess = true;
+      }
+
+      if (tasksRes.status === 'fulfilled' && tasksRes.value.success && tasksRes.value.data) {
+        const liveTasks = tasksRes.value.data || [];
+        if (orgId) {
+          await offlineSyncEngine.cacheTasks(orgId, liveTasks);
+        }
+        isAnyOnlineSuccess = true;
+      }
+
+      if (storesRes.status === 'fulfilled' && storesRes.value.success && storesRes.value.data) {
+        setStores(storesRes.value.data || []);
+        isAnyOnlineSuccess = true;
+      }
+
+      if (commRes.status === 'fulfilled' && commRes.value.success && commRes.value.data) {
+        setCommunities(commRes.value.data || []);
+        isAnyOnlineSuccess = true;
+      }
+
+      if (!isAnyOnlineSuccess && orgId) {
+        // Fallback to local SQLite cache
+        setIsOfflineMode(true);
+        const cached = await offlineSyncEngine.getCachedTasks(orgId);
+        if (cached && cached.length > 0) {
+          const pending = cached.filter((t) => t.status === 'PENDING').length;
+          const inProgress = cached.filter((t) => t.status === 'IN_PROGRESS').length;
+          const submitted = cached.filter((t) => t.status === 'SUBMITTED').length;
+          const approved = cached.filter((t) => t.status === 'APPROVED' || t.status === 'COMPLETED').length;
+          const total = cached.length;
+          const rate = total > 0 ? Math.round((approved / total) * 100) : 0;
+
+          setAnalytics({
+            totalTasks: total,
+            completionRate: rate,
+            overdueTasks: 0,
+            byStatus: { PENDING: pending, IN_PROGRESS: inProgress, SUBMITTED: submitted, APPROVED: approved, REJECTED: 0 },
+          });
+        }
+      } else {
+        setIsOfflineMode(false);
+      }
+    } catch (err) {
+      console.warn('[HomeScreen] Data loading error, falling back to cache:', err);
+      setIsOfflineMode(true);
+      if (orgId) {
+        const cached = await offlineSyncEngine.getCachedTasks(orgId);
+        if (cached) {
+          setAnalytics((prev: any) => ({ ...prev, totalTasks: cached.length }));
+        }
+      }
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const onRefresh = () => {
+    setIsRefreshing(true);
+    loadData();
+  };
+
+  const todoCount = analytics.byStatus?.PENDING || 0;
+  const startedCount = analytics.byStatus?.IN_PROGRESS || 0;
+  const doneCount = (analytics.byStatus?.APPROVED || 0) + (analytics.byStatus?.COMPLETED || 0);
+  const toValidateCount = analytics.byStatus?.SUBMITTED || 0;
+  const totalTasks = analytics.totalTasks || (todoCount + startedCount + doneCount + toValidateCount);
+  const overdueCount = analytics.overdueTasks || 0;
+  const completionPercent = analytics.completionRate || (totalTasks > 0 ? Math.round((doneCount / totalTasks) * 100) : 0);
+
+  const displayName = user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user?.email || 'Collaborateur';
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -21,14 +131,15 @@ export default function HomeScreen() {
       {/* Top Application Header Bar */}
       <View style={styles.topHeader}>
         <View style={styles.headerLeft}>
-          <View style={styles.avatarWrapper}>
-            <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&q=80' }}
-              style={styles.avatarImg}
-            />
-            <View style={styles.onlineBadge} />
-          </View>
-          <TouchableOpacity style={styles.iconCircleButton}>
+          <TouchableOpacity onPress={() => router.push('/profile')} style={styles.avatarWrapper}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarInitials}>
+                {(user?.firstName?.[0] || 'U') + (user?.lastName?.[0] || '')}
+              </Text>
+            </View>
+            <View style={[styles.onlineBadge, isOfflineMode && { backgroundColor: '#F59E0B' }]} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconCircleButton} onPress={() => router.push('/tasks')}>
             <Text style={styles.headerIcon}>🔍</Text>
           </TouchableOpacity>
         </View>
@@ -38,99 +149,115 @@ export default function HomeScreen() {
           <Text style={styles.yoobicY}>y</Text>
         </View>
 
-        {/* Header Right Actions: Bell, Calendar, Chat */}
+        {/* Header Right Actions */}
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerActionBtn}>
+          <TouchableOpacity style={styles.headerActionBtn} onPress={() => router.push('/community')}>
             <Text style={styles.headerActionIcon}>🔔</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerActionBtn}>
+          <TouchableOpacity style={styles.headerActionBtn} onPress={() => router.push('/tasks')}>
             <Text style={styles.headerActionIcon}>📅</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerActionBtn}>
+          <TouchableOpacity style={styles.headerActionBtn} onPress={() => router.push('/community')}>
             <Text style={styles.headerActionIcon}>💬</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Offline Mode Banner */}
+      {isOfflineMode && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineBannerText}>⚡ Mode Hors-Ligne • Données chargées depuis SQLite</Text>
+        </View>
+      )}
+
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={['#2563EB']} />}
+      >
         {/* User Greeting */}
         <View style={styles.greetingSection}>
-          <Text style={styles.greetingText}>👋 Bonjour, Mahrsi</Text>
+          <Text style={styles.greetingText}>👋 Bonjour, {displayName}</Text>
+          <Text style={styles.orgSubtitle}>{currentOrg?.name || 'Organisation Active'}</Text>
         </View>
 
-        {/* 1. ACTIVITY HUB CARD (Screenshot 5) */}
+        {/* 1. ACTIVITY HUB CARD */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Activity Hub</Text>
-            <TouchableOpacity>
-              <Text style={styles.menuDots}>⋮</Text>
+            <TouchableOpacity onPress={onRefresh}>
+              <Text style={styles.menuDots}>🔄</Text>
             </TouchableOpacity>
           </View>
 
           {/* Donut Progress Centerpiece */}
           <View style={styles.donutWrapper}>
-            <Text style={styles.donutDateHeader}>146 Aujourd'hui</Text>
+            <Text style={styles.donutDateHeader}>{totalTasks} Missions Totales</Text>
             <View style={styles.donutCircle}>
               <View style={styles.donutInner}>
-                <Text style={styles.donutStatGray}>À faire: 140</Text>
-                <Text style={styles.donutStatYellow}>Démarré: 6</Text>
-                <Text style={styles.donutStatGreen}>Fait: 0</Text>
+                <Text style={styles.donutStatGray}>À faire: {todoCount}</Text>
+                <Text style={styles.donutStatYellow}>Démarré: {startedCount}</Text>
+                <Text style={styles.donutStatGreen}>Fait: {doneCount}</Text>
               </View>
             </View>
           </View>
 
-          {/* Red Alert Banner */}
+          {/* Alert Banner */}
           <TouchableOpacity
-            style={styles.redAlertBanner}
+            style={[styles.redAlertBanner, overdueCount === 0 && { backgroundColor: '#F0FDF4' }]}
             onPress={() => router.push('/tasks')}
           >
-            <Text style={styles.redAlertText}>90 Sites en retard</Text>
+            <Text style={[styles.redAlertText, overdueCount === 0 && { color: '#16A34A' }]}>
+              {overdueCount > 0 ? `${overdueCount} Missions en retard` : '✅ Aucune mission en retard'}
+            </Text>
           </TouchableOpacity>
 
           {/* Action Pills Row */}
           <View style={styles.actionsPillRow}>
             <TouchableOpacity style={styles.greenPill} onPress={() => router.push('/tasks')}>
-              <Text style={styles.greenPillText}>183 À valider</Text>
+              <Text style={styles.greenPillText}>{toValidateCount} À valider</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.bluePill} onPress={() => router.push('/tasks')}>
-              <Text style={styles.bluePillText}>0 Nouvelle tâche</Text>
+              <Text style={styles.bluePillText}>{todoCount} À traiter</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* 2. SITES EN RETARD (Screenshot 1) */}
+        {/* 2. SITES EN RETARD / STATUT */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Sites en retard</Text>
+            <Text style={styles.cardTitle}>Statut d'exécution</Text>
             <View style={styles.cardHeaderRight}>
               <TouchableOpacity onPress={() => router.push('/tasks')}>
                 <Text style={styles.seeAllText}>Tout voir</Text>
               </TouchableOpacity>
-              <Text style={styles.menuDots}>⋮</Text>
             </View>
           </View>
 
-          <View style={styles.overdueBigBox}>
-            <Text style={styles.alarmIcon}>⏰</Text>
-            <Text style={styles.overdueBigNumber}>115</Text>
-            <Text style={styles.overdueLabel}>Sites avec des missions en retard</Text>
+          <View style={[styles.overdueBigBox, overdueCount === 0 && { backgroundColor: '#F0FDF4', borderColor: '#DCFCE7' }]}>
+            <Text style={styles.alarmIcon}>{overdueCount > 0 ? '⏰' : '🎯'}</Text>
+            <Text style={[styles.overdueBigNumber, overdueCount === 0 && { color: '#16A34A' }]}>
+              {overdueCount > 0 ? overdueCount : `${completionPercent}%`}
+            </Text>
+            <Text style={[styles.overdueLabel, overdueCount === 0 && { color: '#15803D' }]}>
+              {overdueCount > 0 ? 'Missions nécessitant une action immédiate' : 'Taux global de conformité et complétion'}
+            </Text>
           </View>
         </View>
 
-        {/* 3. ACTIVITÉS DU JOUR (Screenshot 1) */}
+        {/* 3. ACTIVITÉS DU JOUR */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={styles.titleWithBadge}>
               <Text style={styles.cardTitle}>Activités du jour</Text>
               <View style={styles.newBadge}>
-                <Text style={styles.newBadgeText}>New</Text>
+                <Text style={styles.newBadgeText}>Live</Text>
               </View>
             </View>
             <View style={styles.cardHeaderRight}>
               <TouchableOpacity onPress={() => router.push('/tasks')}>
-                <Text style={styles.seeAllText}>Tout voir</Text>
+                <Text style={styles.seeAllText}>Détails</Text>
               </TouchableOpacity>
-              <Text style={styles.menuDots}>⋮</Text>
             </View>
           </View>
 
@@ -138,155 +265,111 @@ export default function HomeScreen() {
             <View style={styles.activityPillsCol}>
               <View style={styles.pillOverdue}>
                 <Text style={styles.pillOverdueIcon}>⏰</Text>
-                <Text style={styles.pillOverdueText}>100 En retard</Text>
+                <Text style={styles.pillOverdueText}>{overdueCount} En retard</Text>
               </View>
               <View style={styles.pillTodo}>
                 <Text style={styles.pillTodoIcon}>☑️</Text>
-                <Text style={styles.pillTodoText}>101 À faire</Text>
+                <Text style={styles.pillTodoText}>{todoCount} À faire</Text>
               </View>
             </View>
 
             {/* Circular Gauge */}
             <View style={styles.gaugeContainer}>
               <View style={styles.gaugeCircle}>
-                <Text style={styles.gaugePercent}>0%</Text>
+                <Text style={styles.gaugePercent}>{completionPercent}%</Text>
               </View>
-              <Text style={styles.gaugeLabel}>Ok</Text>
+              <Text style={styles.gaugeLabel}>Complétion</Text>
             </View>
           </View>
         </View>
 
-        {/* 4. SITES LIST (Screenshots 1 & 4) */}
+        {/* 4. SITES LIST */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Sites</Text>
+            <Text style={styles.cardTitle}>Sites & Établissements ({stores.length})</Text>
             <View style={styles.cardHeaderRight}>
               <TouchableOpacity onPress={() => router.push('/tasks')}>
-                <Text style={styles.seeAllText}>Tout voir</Text>
+                <Text style={styles.seeAllText}>Voir tous</Text>
               </TouchableOpacity>
-              <Text style={styles.menuDots}>⋮</Text>
             </View>
           </View>
 
-          {/* Site 1: WM_3047 */}
-          <TouchableOpacity
-            style={styles.siteItem}
-            onPress={() => router.push('/tasks')}
-          >
-            <View style={styles.siteTopRow}>
-              <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=120&q=80' }}
-                style={styles.siteThumbnail}
-              />
-              <View style={styles.siteMeta}>
-                <View style={styles.siteTitleRow}>
-                  <Text style={styles.siteName}>WM_3047</Text>
-                  <Text style={styles.siteDistance}>📍 0.1 m</Text>
-                </View>
-                <Text style={styles.siteAddress}>2075 CHOMDEDY BLVD, H7T0G5, LAVAL, Canada</Text>
-                <Text style={styles.siteLastVisit}>Dernière visite il y a 7 jrs</Text>
-              </View>
+          {stores.length === 0 ? (
+            <View style={styles.emptyStoreBox}>
+              <Text style={styles.emptyStoreText}>Chargement des établissements assignés...</Text>
             </View>
+          ) : (
+            stores.slice(0, 3).map((st, idx) => (
+              <View key={st.id || idx}>
+                <TouchableOpacity style={styles.siteItem} onPress={() => router.push('/tasks')}>
+                  <View style={styles.siteTopRow}>
+                    <View style={styles.siteThumbPlaceholder}>
+                      <Text style={styles.siteThumbText}>🏢</Text>
+                    </View>
+                    <View style={styles.siteMeta}>
+                      <View style={styles.siteTitleRow}>
+                        <Text style={styles.siteName}>{st.name}</Text>
+                        <Text style={styles.siteDistance}>{st.code || 'SITE'}</Text>
+                      </View>
+                      <Text style={styles.siteAddress}>{st.address || st.city || 'Adresse du magasin'}</Text>
+                      <Text style={styles.siteLastVisit}>{st.region?.name || 'Région Standard'}</Text>
+                    </View>
+                  </View>
 
-            {/* 4 Metric Columns */}
-            <View style={styles.siteMetricsGrid}>
-              <View style={styles.metricCol}>
-                <Text style={styles.metricLabel}>À faire</Text>
-                <Text style={styles.metricVal}>4</Text>
+                  <View style={styles.siteMetricsGrid}>
+                    <View style={styles.metricCol}>
+                      <Text style={styles.metricLabel}>Statut</Text>
+                      <Text style={styles.metricVal}>{st.status || 'ACTIF'}</Text>
+                    </View>
+                    <View style={styles.metricCol}>
+                      <Text style={styles.metricLabel}>Équipes</Text>
+                      <Text style={styles.metricVal}>{st._count?.teams || 1}</Text>
+                    </View>
+                    <View style={styles.metricCol}>
+                      <Text style={styles.metricLabel}>Missions</Text>
+                      <Text style={styles.metricVal}>{todoCount}</Text>
+                    </View>
+                    <View style={styles.metricCol}>
+                      <Text style={styles.metricLabel}>Complétion</Text>
+                      <Text style={styles.metricVal}>{completionPercent}%</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+                {idx < Math.min(stores.length, 3) - 1 && <View style={styles.divider} />}
               </View>
-              <View style={styles.metricCol}>
-                <Text style={styles.metricLabel}>Complétion</Text>
-                <Text style={styles.metricVal}>71%</Text>
-              </View>
-              <View style={styles.metricCol}>
-                <Text style={styles.metricLabel}>En retard</Text>
-                <Text style={styles.metricVal}>0</Text>
-              </View>
-              <View style={styles.metricCol}>
-                <Text style={styles.metricLabel}>Complété</Text>
-                <Text style={styles.metricVal}>11</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.divider} />
-
-          {/* Site 2: MAXI6 */}
-          <TouchableOpacity
-            style={styles.siteItem}
-            onPress={() => router.push('/tasks')}
-          >
-            <View style={styles.siteTopRow}>
-              <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1534452203293-494d7ddbf7e0?auto=format&fit=crop&w=120&q=80' }}
-                style={styles.siteThumbnail}
-              />
-              <View style={styles.siteMeta}>
-                <View style={styles.siteTitleRow}>
-                  <Text style={styles.siteName}>MAXI6</Text>
-                  <Text style={styles.siteDistance}>📍 0.6 m</Text>
-                </View>
-                <Text style={styles.siteAddress}>3500, Boul. St-Martin Ouest, Laval, H7T 2W4, QC</Text>
-              </View>
-            </View>
-
-            <View style={styles.siteMetricsGrid}>
-              <View style={styles.metricCol}>
-                <Text style={styles.metricLabel}>À faire</Text>
-                <Text style={styles.metricVal}>0</Text>
-              </View>
-              <View style={styles.metricCol}>
-                <Text style={styles.metricLabel}>Complétion</Text>
-                <Text style={styles.metricVal}>0%</Text>
-              </View>
-              <View style={styles.metricCol}>
-                <Text style={styles.metricLabel}>En retard</Text>
-                <Text style={styles.metricVal}>0</Text>
-              </View>
-              <View style={styles.metricCol}>
-                <Text style={styles.metricLabel}>Complété</Text>
-                <Text style={styles.metricVal}>0</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
+            ))
+          )}
         </View>
 
-        {/* 5. COMMUNAUTÉS CARD (Screenshot 5) */}
+        {/* 5. COMMUNAUTÉS */}
         <View style={[styles.card, { marginBottom: 30 }]}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Communautés</Text>
+            <Text style={styles.cardTitle}>Communautés & Équipes</Text>
             <View style={styles.cardHeaderRight}>
               <TouchableOpacity onPress={() => router.push('/community')}>
                 <Text style={styles.seeAllText}>Tout voir</Text>
               </TouchableOpacity>
-              <Text style={styles.menuDots}>⋮</Text>
             </View>
           </View>
 
           <View style={styles.communityRow}>
-            <TouchableOpacity style={styles.communityCircleItem} onPress={() => router.push('/community')}>
-              <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=120&q=80' }}
-                style={styles.communityImg}
-              />
-              <Text style={styles.communityTitle}>Merchandising</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.communityCircleItem} onPress={() => router.push('/community')}>
-              <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=120&q=80' }}
-                style={styles.communityImg}
-              />
-              <Text style={styles.communityTitle}>Opérations</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.communityCircleItem} onPress={() => router.push('/community')}>
-              <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=120&q=80' }}
-                style={styles.communityImg}
-              />
-              <Text style={styles.communityTitle}>Sécurité</Text>
-            </TouchableOpacity>
+            {communities.length === 0 ? (
+              <TouchableOpacity style={styles.communityCircleItem} onPress={() => router.push('/community')}>
+                <View style={styles.communityIconBox}>
+                  <Text style={styles.communityEmoji}>📢</Text>
+                </View>
+                <Text style={styles.communityTitle}>Opérations</Text>
+              </TouchableOpacity>
+            ) : (
+              communities.slice(0, 4).map((c, i) => (
+                <TouchableOpacity key={c.id || i} style={styles.communityCircleItem} onPress={() => router.push('/community')}>
+                  <View style={styles.communityIconBox}>
+                    <Text style={styles.communityEmoji}>{i % 2 === 0 ? '🏬' : '🎯'}</Text>
+                  </View>
+                  <Text style={styles.communityTitle} numberOfLines={1}>{c.name}</Text>
+                </TouchableOpacity>
+              ))
+            )}
           </View>
         </View>
       </ScrollView>
@@ -317,10 +400,18 @@ const styles = StyleSheet.create({
   avatarWrapper: {
     position: 'relative',
   },
-  avatarImg: {
+  avatarCircle: {
     width: 32,
     height: 32,
     borderRadius: 16,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitials: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   onlineBadge: {
     position: 'absolute',
@@ -346,7 +437,7 @@ const styles = StyleSheet.create({
   yoobicY: {
     fontSize: 26,
     fontWeight: '900',
-    color: '#3B82F6',
+    color: '#2563EB',
     fontStyle: 'italic',
     transform: [{ scaleY: 1.1 }],
   },
@@ -361,6 +452,19 @@ const styles = StyleSheet.create({
   headerActionIcon: {
     fontSize: 17,
   },
+  offlineBanner: {
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#FDE68A',
+  },
+  offlineBannerText: {
+    color: '#B45309',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   container: {
     flex: 1,
     paddingHorizontal: 16,
@@ -373,6 +477,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#0F172A',
+  },
+  orgSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+    fontWeight: '500',
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -429,8 +539,8 @@ const styles = StyleSheet.create({
     borderRadius: 70,
     borderWidth: 14,
     borderColor: '#E2E8F0',
-    borderTopColor: '#EAB308',
-    borderRightColor: '#E2E8F0',
+    borderTopColor: '#2563EB',
+    borderRightColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -517,6 +627,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#DC2626',
     fontWeight: '600',
+    textAlign: 'center',
   },
   titleWithBadge: {
     flexDirection: 'row',
@@ -588,7 +699,7 @@ const styles = StyleSheet.create({
     height: 68,
     borderRadius: 34,
     borderWidth: 6,
-    borderColor: '#E2E8F0',
+    borderColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -610,11 +721,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
-  siteThumbnail: {
+  siteThumbPlaceholder: {
     width: 44,
     height: 44,
     borderRadius: 8,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  siteThumbText: {
+    fontSize: 20,
   },
   siteMeta: {
     flex: 1,
@@ -631,8 +747,12 @@ const styles = StyleSheet.create({
   },
   siteDistance: {
     fontSize: 11,
-    color: '#0F172A',
-    fontWeight: '600',
+    color: '#2563EB',
+    fontWeight: '700',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   siteAddress: {
     fontSize: 11,
@@ -671,20 +791,36 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
     marginVertical: 12,
   },
+  emptyStoreBox: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyStoreText: {
+    color: '#94A3B8',
+    fontSize: 13,
+  },
   communityRow: {
     flexDirection: 'row',
-    gap: 20,
+    gap: 16,
     paddingVertical: 4,
   },
   communityCircleItem: {
     alignItems: 'center',
-    width: 80,
+    width: 76,
   },
-  communityImg: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  communityIconBox: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 6,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  communityEmoji: {
+    fontSize: 24,
   },
   communityTitle: {
     fontSize: 11,

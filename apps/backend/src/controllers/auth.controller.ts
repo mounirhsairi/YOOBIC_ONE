@@ -1,13 +1,19 @@
 import { Request, Response } from 'express';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
 import { User, Organization, Membership, Role, Permission } from '../models';
-import { registerSchema, loginSchema, refreshTokenSchema } from '@yoobic/validation';
+import { registerSchema, loginSchema } from '@yoobic/validation';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_super_secret_jwt_key_yoobic_2026';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret_key_yoobic_2026';
 const ACCESS_TOKEN_EXPIRY = '1h';
 const REFRESH_TOKEN_EXPIRY = '7d';
+
+const hashRefreshToken = (token: string): string => {
+  return crypto.createHash('sha256').update(token).digest('hex');
+};
 
 const generateTokens = (user: User) => {
   const accessToken = jwt.sign(
@@ -17,12 +23,98 @@ const generateTokens = (user: User) => {
   );
 
   const refreshToken = jwt.sign(
-    { sub: user.id },
+    { sub: user.id, jti: uuidv4() },
     JWT_REFRESH_SECRET,
     { expiresIn: REFRESH_TOKEN_EXPIRY }
   );
 
   return { accessToken, refreshToken, expiresIn: 3600 };
+};
+
+export const refreshAccessToken = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { refreshToken: token } = req.body;
+    if (!token) {
+      res.status(400).json({ success: false, error: { code: 'REFRESH_TOKEN_MISSING', message: 'Refresh token is required' } });
+      return;
+    }
+
+    let decoded: { sub: string };
+    try {
+      decoded = jwt.verify(token, JWT_REFRESH_SECRET) as { sub: string };
+    } catch {
+      res.status(401).json({ success: false, error: { code: 'INVALID_REFRESH_TOKEN', message: 'Refresh token is invalid or expired' } });
+      return;
+    }
+
+    const user = await User.findByPk(decoded.sub);
+    if (!user || !user.isActive || !user.refreshTokenHash) {
+      res.status(401).json({ success: false, error: { code: 'USER_NOT_FOUND_OR_INACTIVE', message: 'User not found or is inactive' } });
+      return;
+    }
+
+    const tokenHash = hashRefreshToken(token);
+    const isMatch = (tokenHash === user.refreshTokenHash);
+    if (!isMatch) {
+      // Token reuse detected — invalidate all tokens (refresh token rotation)
+      await User.update({ refreshTokenHash: null }, { where: { id: user.id } });
+      res.status(401).json({ success: false, error: { code: 'REFRESH_TOKEN_REUSE', message: 'Token reuse detected. Please log in again.' } });
+      return;
+    }
+
+    const tokens = generateTokens(user);
+    const newHash = hashRefreshToken(tokens.refreshToken);
+    await User.update({ refreshTokenHash: newHash }, { where: { id: user.id } });
+
+    res.json({ success: true, data: { tokens } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const logout = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } });
+      return;
+    }
+    const user = await User.findByPk(req.user.id);
+    if (user) {
+      await user.update({ refreshTokenHash: null });
+    }
+    res.json({ success: true, data: { message: 'Logged out successfully' } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const changePassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } });
+      return;
+    }
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword || newPassword.length < 8) {
+      res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'currentPassword and newPassword (min 8 chars) are required' } });
+      return;
+    }
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+      return;
+    }
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) {
+      res.status(400).json({ success: false, error: { code: 'INVALID_CURRENT_PASSWORD', message: 'Current password is incorrect' } });
+      return;
+    }
+    const newPasswordHash = await bcrypt.hash(newPassword, 12);
+    await user.update({ passwordHash: newPasswordHash, refreshTokenHash: null });
+    res.json({ success: true, data: { message: 'Password changed. Please log in again.' } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
 };
 
 export const register = async (req: Request, res: Response): Promise<void> => {
@@ -47,7 +139,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(12);
     const passwordHash = await bcrypt.hash(password, salt);
 
     const user = await User.create({
@@ -115,9 +207,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const tokens = generateTokens(user);
 
     // Save hashed refresh token
-    const refreshHash = await bcrypt.hash(tokens.refreshToken, 10);
-    user.refreshTokenHash = refreshHash;
-    await user.save();
+    const refreshHash = hashRefreshToken(tokens.refreshToken);
+    await User.update({ refreshTokenHash: refreshHash }, { where: { id: user.id } });
 
     res.status(201).json({
       success: true,
@@ -200,9 +291,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     const tokens = generateTokens(user);
-    const refreshHash = await bcrypt.hash(tokens.refreshToken, 10);
-    user.refreshTokenHash = refreshHash;
-    await user.save();
+    const refreshHash = hashRefreshToken(tokens.refreshToken);
+    await User.update({ refreshTokenHash: refreshHash }, { where: { id: user.id } });
 
     res.json({
       success: true,

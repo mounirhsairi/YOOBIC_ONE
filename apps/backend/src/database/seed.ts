@@ -79,6 +79,15 @@ export const seedDatabase = async () => {
       isActive: true,
     });
 
+    const adminUser = await User.create({
+      email: 'admin@yoobic-demo.com',
+      passwordHash,
+      firstName: 'Admin',
+      lastName: 'Demo',
+      isActive: true,
+      isSuperAdmin: true,
+    });
+
     const employee = await User.create({
       email: 'alex.frontline@globalretail.com',
       passwordHash: employeePasswordHash,
@@ -116,6 +125,15 @@ export const seedDatabase = async () => {
     });
 
     // 5. Memberships
+    await Membership.create({
+      userId: adminUser.id,
+      organizationId: org.id,
+      roleId: ownerRole.id,
+      status: 'ACTIVE',
+      storeId: store1.id,
+      jobTitle: 'Enterprise Administrator',
+    });
+
     await Membership.create({
       userId: manager.id,
       organizationId: org.id,

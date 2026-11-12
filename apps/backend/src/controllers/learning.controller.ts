@@ -143,3 +143,47 @@ export const submitQuiz = async (req: Request, res: Response): Promise<void> => 
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
   }
 };
+
+export const updateCourse = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const course = await Course.findOne({ where: { id: req.params.id, organizationId: orgId } });
+    if (!course) {
+      res.status(404).json({ success: false, error: { code: 'COURSE_NOT_FOUND', message: 'Course not found' } });
+      return;
+    }
+    await course.update(req.body);
+    res.json({ success: true, data: course });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const deleteCourse = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const course = await Course.findOne({ where: { id: req.params.id, organizationId: orgId } });
+    if (!course) {
+      res.status(404).json({ success: false, error: { code: 'COURSE_NOT_FOUND', message: 'Course not found' } });
+      return;
+    }
+    course.isActive = false;
+    await course.save();
+    res.json({ success: true, data: { message: 'Course deactivated successfully' } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const getMyProgress = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const progressList = await LearningProgress.findAll({
+      where: { userId: req.user!.id, organizationId: orgId },
+      include: [{ model: Course, as: 'course' }],
+    });
+    res.json({ success: true, data: progressList });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};

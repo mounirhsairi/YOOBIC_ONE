@@ -41,7 +41,7 @@ export const connectDatabase = async () => {
     
     // Auto-sync schema in test/dev
     if (process.env.NODE_ENV !== 'production') {
-      await sequelize.sync({ alter: true });
+      await sequelize.sync();
       console.log('[Database] Schema synchronized.');
     }
   } catch (error) {

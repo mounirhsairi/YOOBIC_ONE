@@ -59,6 +59,18 @@ export const createOrganization = async (req: Request, res: Response): Promise<v
 export const getOrganization = async (req: Request, res: Response): Promise<void> => {
   try {
     const orgId = req.params.id || req.tenant?.organizationId;
+
+    // P0 security fix: non-super-admins can only read orgs they belong to
+    if (!req.user?.isSuperAdmin) {
+      const membership = await Membership.findOne({
+        where: { userId: req.user!.id, organizationId: orgId, status: 'ACTIVE' },
+      });
+      if (!membership) {
+        res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have access to this organization' } });
+        return;
+      }
+    }
+
     const org = await Organization.findByPk(orgId);
     if (!org) {
       res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Organization not found' } });
@@ -228,6 +240,186 @@ export const inviteEmployee = async (req: Request, res: Response): Promise<void>
     });
 
     res.status(201).json({ success: true, data: membership });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const updateOrganization = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const org = await Organization.findByPk(orgId);
+    if (!org) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Organization not found' } }); return; }
+    const { name, logoUrl, timezone, defaultLanguage, currency } = req.body;
+    await org.update({ name, logoUrl, timezone, defaultLanguage, currency });
+    res.json({ success: true, data: org });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const listRegions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const regions = await Region.findAll({ where: { organizationId: orgId }, order: [['name', 'ASC']] });
+    res.json({ success: true, data: regions });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const updateRegion = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const region = await Region.findOne({ where: { id: req.params.id, organizationId: orgId } });
+    if (!region) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Region not found' } }); return; }
+    await region.update(req.body);
+    res.json({ success: true, data: region });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const deleteRegion = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const region = await Region.findOne({ where: { id: req.params.id, organizationId: orgId } });
+    if (!region) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Region not found' } }); return; }
+    await region.destroy();
+    res.json({ success: true, data: { message: 'Region deleted' } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const getStore = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const store = await Store.findOne({ where: { id: req.params.id, organizationId: orgId }, include: [{ model: Team, as: 'teams' }] });
+    if (!store) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Store not found' } }); return; }
+    res.json({ success: true, data: store });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const updateStore = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const store = await Store.findOne({ where: { id: req.params.id, organizationId: orgId } });
+    if (!store) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Store not found' } }); return; }
+    await store.update(req.body);
+    res.json({ success: true, data: store });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const deleteStore = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const store = await Store.findOne({ where: { id: req.params.id, organizationId: orgId } });
+    if (!store) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Store not found' } }); return; }
+    await store.destroy();
+    res.json({ success: true, data: { message: 'Store deleted' } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const listTeams = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const { storeId } = req.query;
+    const where: any = { organizationId: orgId };
+    if (storeId) where.storeId = storeId;
+    const teams = await Team.findAll({ where, order: [['name', 'ASC']] });
+    res.json({ success: true, data: teams });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const updateTeam = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const team = await Team.findOne({ where: { id: req.params.id, organizationId: orgId } });
+    if (!team) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Team not found' } }); return; }
+    await team.update(req.body);
+    res.json({ success: true, data: team });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const deleteTeam = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const team = await Team.findOne({ where: { id: req.params.id, organizationId: orgId } });
+    if (!team) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Team not found' } }); return; }
+    await team.destroy();
+    res.json({ success: true, data: { message: 'Team deleted' } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const membership = await Membership.findOne({ where: { id: req.params.membershipId, organizationId: orgId } });
+    if (!membership) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Membership not found' } }); return; }
+    const { roleId, storeId, teamId, jobTitle, status } = req.body;
+    await membership.update({ roleId, storeId, teamId, jobTitle, status });
+    res.json({ success: true, data: membership });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const removeEmployee = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const membership = await Membership.findOne({ where: { id: req.params.membershipId, organizationId: orgId } });
+    if (!membership) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Membership not found' } }); return; }
+    membership.status = 'DEACTIVATED';
+    await membership.save();
+    res.json({ success: true, data: { message: 'Employee removed from organization' } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const getPlatformStats = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const totalOrgs = await Organization.count();
+    const activeOrgs = await Organization.count({ where: { status: 'ACTIVE' } });
+    const totalUsers = await User.count();
+    res.json({ success: true, data: { totalOrgs, activeOrgs, suspendedOrgs: totalOrgs - activeOrgs, totalUsers } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const suspendOrganization = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const org = await Organization.findByPk(req.params.id);
+    if (!org) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Organization not found' } }); return; }
+    org.status = 'SUSPENDED';
+    await org.save();
+    res.json({ success: true, data: org });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};
+
+export const activateOrganization = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const org = await Organization.findByPk(req.params.id);
+    if (!org) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Organization not found' } }); return; }
+    org.status = 'ACTIVE';
+    await org.save();
+    res.json({ success: true, data: org });
   } catch (error: any) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
   }
