@@ -12,8 +12,17 @@ import {
   Plus,
   ShieldCheck,
   Eye,
+  EyeOff,
   XCircle,
-  FileText
+  FileText,
+  Lock,
+  Mail,
+  Globe,
+  ChevronDown,
+  ArrowRight,
+  LogOut,
+  HelpCircle,
+  Sparkles
 } from 'lucide-react';
 
 interface MetricCardProps {
@@ -37,7 +46,44 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, subtitle, icon: I
   </div>
 );
 
-export default function AdminDashboard() {
+// High-fidelity YOOBIC Brand Logo Component
+const YoobicLogo = ({ className = "h-8", showTag = true }: { className?: string; showTag?: boolean }) => (
+  <div className="flex items-center gap-2.5">
+    <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-cyan-500 shadow-md shadow-blue-500/20">
+      <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="12 2 2 7 12 12 22 7 12 2" />
+        <polyline points="2 17 12 22 22 17" />
+        <polyline points="2 12 12 17 22 12" />
+      </svg>
+    </div>
+    <div className="flex items-baseline gap-1.5">
+      <span className="text-2xl font-black tracking-tight text-slate-900">YOOBIC</span>
+      {showTag && (
+        <span className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-blue-600 text-white shadow-xs">
+          ONE
+        </span>
+      )}
+    </div>
+  </div>
+);
+
+export default function AppRoot() {
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [language, setLanguage] = useState<'English' | 'Français' | 'Español' | 'Deutsch'>('English');
+  const [showLangDropdown, setShowLangDropdown] = useState(false);
+  const [showSsoModal, setShowSsoModal] = useState(false);
+  const [ssoDomain, setSsoDomain] = useState('');
+  const [forgotPasswordMessage, setForgotPasswordMessage] = useState(false);
+
+  // Dashboard State
   const [activeTab, setActiveTab] = useState<'dashboard' | 'tasks' | 'stores' | 'employees'>('dashboard');
   const [tasks, setTasks] = useState<any[]>([
     {
@@ -83,6 +129,79 @@ export default function AdminDashboard() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
 
+  // Handle Hash route matching
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      if (hash.includes('/noauth/login')) {
+        setIsAuthenticated(false);
+      }
+    }
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+    setLoginLoading(true);
+
+    try {
+      const response = await fetch('http://localhost:4000/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setIsAuthenticated(true);
+        setCurrentUser(data.data.user);
+        if (typeof window !== 'undefined') {
+          window.location.hash = '#/app/dashboard';
+        }
+      } else {
+        setLoginError(data.error?.message || 'Invalid username or password. Please verify your credentials.');
+      }
+    } catch (err: any) {
+      // Local fallback in case backend is offline
+      if (
+        (email === 'sarah.manager@globalretail.com' && password === 'Password123!') ||
+        (email === 'alex.frontline@globalretail.com' && password === 'Welcome123!')
+      ) {
+        setIsAuthenticated(true);
+        setCurrentUser({
+          firstName: email.includes('sarah') ? 'Sarah' : 'Alex',
+          lastName: email.includes('sarah') ? 'Manager' : 'Frontline',
+          email,
+        });
+      } else {
+        setLoginError('Unable to connect to authentication server. Please check your network.');
+      }
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleQuickDemoLogin = (role: 'manager' | 'employee') => {
+    if (role === 'manager') {
+      setEmail('sarah.manager@globalretail.com');
+      setPassword('Password123!');
+    } else {
+      setEmail('alex.frontline@globalretail.com');
+      setPassword('Welcome123!');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    setEmail('');
+    setPassword('');
+    if (typeof window !== 'undefined') {
+      window.location.hash = '#/noauth/login';
+    }
+  };
+
   const handleApprove = (taskId: string) => {
     setTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, status: 'APPROVED' } : t))
@@ -109,8 +228,8 @@ export default function AdminDashboard() {
     const newTask = {
       id: `task-${Date.now()}`,
       title: newTaskTitle,
-      storeName: 'All Locations',
-      assigneeName: 'Team Leads',
+      storeName: 'Downtown Supermarket #12',
+      assigneeName: 'Alex Frontline',
       priority: 'MEDIUM',
       status: 'TODO',
       requiresPhoto: true,
@@ -122,26 +241,302 @@ export default function AdminDashboard() {
     setShowCreateModal(false);
   };
 
+  // -------------------------------------------------------------
+  // VIEW 1: IDENTICAL YOOBIC ONE LOGIN VIEW (https://app.yoobic.com/#/noauth/login)
+  // -------------------------------------------------------------
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col justify-between selection:bg-blue-500 selection:text-white">
+        {/* Top Header Bar */}
+        <header className="w-full px-6 py-5 flex items-center justify-between border-b border-slate-200/70 bg-white/70 backdrop-blur-md">
+          <YoobicLogo />
+
+          {/* Language Selector */}
+          <div className="relative">
+            <button
+              onClick={() => setShowLangDropdown(!showLangDropdown)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition border border-slate-200 shadow-2xs"
+            >
+              <Globe className="w-3.5 h-3.5 text-blue-600" />
+              <span>{language}</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
+
+            {showLangDropdown && (
+              <div className="absolute right-0 mt-2 w-36 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-50 animate-in fade-in zoom-in-95">
+                {(['English', 'Français', 'Español', 'Deutsch'] as const).map((lang) => (
+                  <button
+                    key={lang}
+                    onClick={() => {
+                      setLanguage(lang);
+                      setShowLangDropdown(false);
+                    }}
+                    className={`w-full text-left px-3.5 py-2 text-xs font-medium transition ${
+                      language === lang ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {lang}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </header>
+
+        {/* Center Login Container */}
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="w-full max-w-[430px] space-y-6">
+            <div className="bg-white rounded-2xl p-8 sm:p-10 shadow-xl shadow-slate-200/50 border border-slate-100 space-y-6">
+              {/* Header Title inside card */}
+              <div className="text-center space-y-2">
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                  Log in to YOOBIC ONE
+                </h1>
+                <p className="text-sm text-slate-500">
+                  Enter your credentials to access your frontline workspace
+                </p>
+              </div>
+
+              {/* Error Message */}
+              {loginError && (
+                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-red-700 text-xs animate-shake">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <p className="font-medium leading-relaxed">{loginError}</p>
+                </div>
+              )}
+
+              {/* Forgot Password Notification */}
+              {forgotPasswordMessage && (
+                <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 flex items-start gap-2.5 text-blue-700 text-xs">
+                  <HelpCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <p className="font-medium leading-relaxed">
+                    A secure password reset link has been dispatched to your corporate email address.
+                  </p>
+                </div>
+              )}
+
+              {/* Login Form */}
+              <form onSubmit={handleLogin} className="space-y-4">
+                {/* Username / Email Field */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 block">
+                    Username or Email address
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="e.g. name@company.com"
+                      className="w-full pl-10 pr-4 py-2.5 text-sm bg-white rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition shadow-2xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Password Field */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 block">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="w-full pl-10 pr-10 py-2.5 text-sm bg-white rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition shadow-2xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Form Actions: Remember me & Forgot Password */}
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <label className="flex items-center gap-2 text-slate-600 font-medium cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+                    />
+                    Remember username
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setForgotPasswordMessage(true)}
+                    className="font-semibold text-blue-600 hover:text-blue-700 transition"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+
+                {/* Primary Submit Button */}
+                <button
+                  type="submit"
+                  disabled={loginLoading}
+                  className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm shadow-md shadow-blue-500/25 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70"
+                >
+                  {loginLoading ? (
+                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <span>Continue</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* SSO Divider */}
+              <div className="relative flex items-center justify-center">
+                <div className="border-t border-slate-200 w-full" />
+                <span className="bg-white px-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest absolute">
+                  or
+                </span>
+              </div>
+
+              {/* Single Sign-On Button */}
+              <button
+                type="button"
+                onClick={() => setShowSsoModal(true)}
+                className="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+              >
+                <ShieldCheck className="w-4 h-4 text-blue-600" />
+                <span>Log in with Single Sign-On (SSO)</span>
+              </button>
+
+              {/* Quick Fill Demo Credentials */}
+              <div className="pt-2 border-t border-slate-100 space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 text-center flex items-center justify-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  1-Click Test Credentials
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDemoLogin('manager')}
+                    className="p-2 text-left rounded-lg bg-blue-50/70 hover:bg-blue-100/70 border border-blue-200/60 transition group cursor-pointer"
+                  >
+                    <p className="text-xs font-bold text-blue-900 group-hover:text-blue-700">Store Manager</p>
+                    <p className="text-[10px] text-blue-600/80 truncate">sarah.manager@...</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDemoLogin('employee')}
+                    className="p-2 text-left rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 transition group cursor-pointer"
+                  >
+                    <p className="text-xs font-bold text-slate-900 group-hover:text-slate-700">Frontline Staff</p>
+                    <p className="text-[10px] text-slate-500 truncate">alex.frontline@...</p>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Help & Support note */}
+            <p className="text-center text-xs text-slate-500">
+              Need assistance?{' '}
+              <a href="#" className="font-semibold text-blue-600 hover:underline">
+                Contact corporate administrator
+              </a>
+            </p>
+          </div>
+        </div>
+
+        {/* Global Footer */}
+        <footer className="w-full py-4 px-6 border-t border-slate-200/70 bg-white/50 text-slate-500 text-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p>© 2026 YOOBIC Inc. All rights reserved.</p>
+          <div className="flex items-center gap-6">
+            <a href="#" className="hover:text-slate-800 transition">Privacy Policy</a>
+            <a href="#" className="hover:text-slate-800 transition">Terms of Service</a>
+            <a href="#" className="hover:text-slate-800 transition">Security</a>
+            <a href="#" className="hover:text-slate-800 transition">Help Center</a>
+          </div>
+        </footer>
+
+        {/* SSO Modal */}
+        {showSsoModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95">
+              <div className="flex items-center justify-between border-b pb-3">
+                <h3 className="font-bold text-slate-900 text-sm">Enterprise SSO Login</h3>
+                <button
+                  onClick={() => setShowSsoModal(false)}
+                  className="text-slate-400 hover:text-slate-600 font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-xs text-slate-500">
+                Enter your company's YOOBIC workspace domain to be routed to your identity provider (Okta, Azure AD, Ping).
+              </p>
+              <div>
+                <label className="text-xs font-bold text-slate-700">Company Workspace ID</label>
+                <div className="flex items-center mt-1">
+                  <input
+                    type="text"
+                    value={ssoDomain}
+                    onChange={(e) => setSsoDomain(e.target.value)}
+                    placeholder="company"
+                    className="flex-1 text-sm p-2 border rounded-l-lg border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                  <span className="bg-slate-100 border border-l-0 border-slate-300 text-slate-500 text-xs px-3 py-2.5 rounded-r-lg font-medium">
+                    .yoobic.com
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSsoModal(false)}
+                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleQuickDemoLogin('manager');
+                    setShowSsoModal(false);
+                  }}
+                  className="px-4 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Continue to SSO →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // VIEW 2: LOGGED-IN ENTERPRISE WORKSPACE DASHBOARD
+  // -------------------------------------------------------------
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col justify-between p-4">
+      <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col justify-between p-4 shadow-xl">
         <div>
           <div className="flex items-center gap-3 px-2 py-4 mb-6 border-b border-slate-800">
-            <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white tracking-wider">
-              Y1
-            </div>
-            <div>
-              <h1 className="font-bold text-white tracking-tight leading-tight">YOOBIC ONE</h1>
-              <p className="text-xs text-slate-400">Enterprise Operations</p>
-            </div>
+            <YoobicLogo showTag={true} />
           </div>
 
           <nav className="space-y-1">
             <button
               onClick={() => setActiveTab('dashboard')}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'
+                activeTab === 'dashboard' ? 'bg-blue-600 text-white font-bold' : 'hover:bg-slate-800'
               }`}
             >
               <ClipboardList className="w-5 h-5" /> Dashboard
@@ -149,7 +544,7 @@ export default function AdminDashboard() {
             <button
               onClick={() => setActiveTab('tasks')}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                activeTab === 'tasks' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'
+                activeTab === 'tasks' ? 'bg-blue-600 text-white font-bold' : 'hover:bg-slate-800'
               }`}
             >
               <CheckCircle2 className="w-5 h-5" /> Tasks & Operations
@@ -157,7 +552,7 @@ export default function AdminDashboard() {
             <button
               onClick={() => setActiveTab('stores')}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                activeTab === 'stores' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'
+                activeTab === 'stores' ? 'bg-blue-600 text-white font-bold' : 'hover:bg-slate-800'
               }`}
             >
               <Building2 className="w-5 h-5" /> Locations & Stores
@@ -165,7 +560,7 @@ export default function AdminDashboard() {
             <button
               onClick={() => setActiveTab('employees')}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                activeTab === 'employees' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'
+                activeTab === 'employees' ? 'bg-blue-600 text-white font-bold' : 'hover:bg-slate-800'
               }`}
             >
               <Users className="w-5 h-5" /> Frontline Teams
@@ -173,12 +568,25 @@ export default function AdminDashboard() {
           </nav>
         </div>
 
-        <div className="p-3 bg-slate-800 rounded-lg">
-          <p className="text-xs text-slate-400">Active Tenant</p>
-          <p className="text-sm font-semibold text-white truncate">Global Supermarket Corp</p>
-          <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-semibold bg-blue-500/20 text-blue-400 rounded">
-            ENTERPRISE TIER
-          </span>
+        {/* User Card & Logout */}
+        <div className="p-3 bg-slate-800 rounded-xl space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs">
+              {currentUser?.firstName?.[0] || 'U'}
+            </div>
+            <div className="overflow-hidden flex-1">
+              <p className="text-xs font-bold text-white truncate">
+                {currentUser?.firstName} {currentUser?.lastName}
+              </p>
+              <p className="text-[11px] text-slate-400 truncate">{currentUser?.email}</p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 py-1.5 text-xs font-semibold text-rose-300 hover:text-white bg-slate-700/60 hover:bg-rose-600 rounded-lg transition"
+          >
+            <LogOut className="w-3.5 h-3.5" /> Log Out
+          </button>
         </div>
       </aside>
 
@@ -201,7 +609,7 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow-sm transition"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow-sm transition cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Create Task
             </button>
@@ -309,7 +717,7 @@ export default function AdminDashboard() {
                       <td className="px-6 py-4 text-right">
                         <button
                           onClick={() => setSelectedTask(task)}
-                          className="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition"
+                          className="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition cursor-pointer"
                         >
                           Inspect & Validate
                         </button>
