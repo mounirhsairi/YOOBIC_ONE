@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: yoobic_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secure_pass_2026
+      MYSQL_DATABASE: yoobic_one
+      MYSQL_USER: yoobic
+      MYSQL_PASSWORD: yoobic_secret
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'yoobic', '-pyoobic_secret']
+      timeout: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: yoobic_redis
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.backend
+    container_name: yoobic_backend
+    restart: always
+    environment:
+      PORT: 4000
+      NODE_ENV: production
+      DB_DIALECT: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: yoobic
+      DB_PASSWORD: yoobic_secret
+      DB_NAME: yoobic_one
+      JWT_SECRET: production_jwt_secret_change_me
+      JWT_REFRESH_SECRET: production_refresh_secret_change_me
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - '4000:4000'
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  admin-web:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.admin
+    container_name: yoobic_admin
+    restart: always
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
+  redis_data:

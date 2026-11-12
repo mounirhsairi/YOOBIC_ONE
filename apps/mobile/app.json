@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "YOOBIC ONE",
+    "slug": "yoobic-one",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "yoobic",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#2563EB"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yoobic.one"
+    },
+    "android": {
+      "package": "com.yoobic.one"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow YOOBIC ONE to access your camera to capture operational task evidence."
+        }
+      ]
+    ]
+  }
+}

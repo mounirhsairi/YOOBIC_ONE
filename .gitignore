@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+.next/
+.expo/
+*.log
+.env
+.env.local
+.env.*.local
+*.tsbuildinfo
+*.sqlite
+dev_database.sqlite
+coverage/
+.DS_Store
+Thumbs.db
