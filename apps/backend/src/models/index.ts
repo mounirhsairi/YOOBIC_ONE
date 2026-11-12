@@ -21,10 +21,14 @@ import { Comment } from './Comment';
 import { Course } from './Course';
 import { LearningProgress } from './LearningProgress';
 import { Notification } from './Notification';
+import { MembershipScope } from './MembershipScope';
 
 // User & Organization relationships
 User.hasMany(Membership, { foreignKey: 'userId', as: 'memberships' });
 Membership.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+Membership.hasMany(MembershipScope, { foreignKey: 'membershipId', as: 'scopes' });
+MembershipScope.belongsTo(Membership, { foreignKey: 'membershipId', as: 'membership' });
 
 Organization.hasMany(Membership, { foreignKey: 'organizationId', as: 'memberships' });
 Membership.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization' });
@@ -181,4 +185,5 @@ export {
   Course,
   LearningProgress,
   Notification,
+  MembershipScope,
 };

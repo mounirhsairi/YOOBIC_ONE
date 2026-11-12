@@ -22,7 +22,19 @@ import {
   ArrowRight,
   LogOut,
   HelpCircle,
-  Sparkles
+  Sparkles,
+  BarChart3,
+  GraduationCap,
+  Megaphone,
+  CreditCard,
+  Settings,
+  Calendar,
+  CheckSquare,
+  MapPin,
+  Award,
+  Layers,
+  Send,
+  Download
 } from 'lucide-react';
 
 interface MetricCardProps {
@@ -34,32 +46,32 @@ interface MetricCardProps {
 }
 
 const MetricCard: React.FC<MetricCardProps> = ({ title, value, subtitle, icon: Icon, color }) => (
-  <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100 flex items-start justify-between">
+  <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 flex items-start justify-between">
     <div>
-      <p className="text-sm font-medium text-slate-500">{title}</p>
-      <h3 className="text-3xl font-bold mt-2 text-slate-900">{value}</h3>
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{title}</p>
+      <h3 className="text-2xl font-black mt-2 text-slate-900">{value}</h3>
       <p className="text-xs text-slate-400 mt-1">{subtitle}</p>
     </div>
-    <div className={`p-3 rounded-lg ${color}`}>
-      <Icon className="w-6 h-6 text-white" />
+    <div className={`p-3 rounded-xl ${color}`}>
+      <Icon className="w-5 h-5 text-white" />
     </div>
   </div>
 );
 
 // High-fidelity YOOBIC Brand Logo Component
-const YoobicLogo = ({ className = "h-8", showTag = true }: { className?: string; showTag?: boolean }) => (
+const YoobicLogo = ({ showTag = true }: { showTag?: boolean }) => (
   <div className="flex items-center gap-2.5">
-    <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-cyan-500 shadow-md shadow-blue-500/20">
-      <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-cyan-500 shadow-md shadow-blue-500/20">
+      <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <polygon points="12 2 2 7 12 12 22 7 12 2" />
         <polyline points="2 17 12 22 22 17" />
         <polyline points="2 12 12 17 22 12" />
       </svg>
     </div>
     <div className="flex items-baseline gap-1.5">
-      <span className="text-2xl font-black tracking-tight text-slate-900">YOOBIC</span>
+      <span className="text-xl font-black tracking-tight text-slate-900">YOOBIC</span>
       {showTag && (
-        <span className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-blue-600 text-white shadow-xs">
+        <span className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-blue-600 text-white shadow-2xs">
           ONE
         </span>
       )}
@@ -68,6 +80,20 @@ const YoobicLogo = ({ className = "h-8", showTag = true }: { className?: string;
 );
 
 export default function AppRoot() {
+  // Navigation tabs conforming to YOOBIC ONE specification
+  type NavTab =
+    | 'dashboard'
+    | 'tasks'
+    | 'audits'
+    | 'communication'
+    | 'learning'
+    | 'locations'
+    | 'employees'
+    | 'analytics'
+    | 'subscription';
+
+  const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -83,8 +109,7 @@ export default function AppRoot() {
   const [ssoDomain, setSsoDomain] = useState('');
   const [forgotPasswordMessage, setForgotPasswordMessage] = useState(false);
 
-  // Dashboard State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'tasks' | 'stores' | 'employees'>('dashboard');
+  // Operational Tasks State
   const [tasks, setTasks] = useState<any[]>([
     {
       id: 'task-101',
@@ -121,13 +146,136 @@ export default function AppRoot() {
       hasEvidence: false,
       submittedAt: null,
     },
+    {
+      id: 'task-104',
+      title: 'Evening Cash Drawer Reconcile & Safe Lock',
+      storeName: 'Downtown Supermarket #12',
+      assigneeName: 'Thomas Vance',
+      priority: 'HIGH',
+      status: 'TODO',
+      requiresPhoto: true,
+      hasEvidence: false,
+      submittedAt: null,
+    },
   ]);
 
+  // Audits & Visits State
+  const [audits, setAudits] = useState<any[]>([
+    {
+      id: 'aud-1',
+      templateTitle: 'Q2 Comprehensive Store Compliance Audit',
+      storeName: 'Downtown Supermarket #12',
+      auditorName: 'Marc V. (Regional Auditor)',
+      scheduledDate: '2026-11-14',
+      score: 92,
+      passed: true,
+      status: 'COMPLETED',
+      correctiveActionsCount: 1,
+    },
+    {
+      id: 'aud-2',
+      templateTitle: 'Food Safety & Cold Chain Audit',
+      storeName: 'North Mall Store #04',
+      auditorName: 'Sarah Manager',
+      scheduledDate: '2026-11-16',
+      score: null,
+      passed: null,
+      status: 'SCHEDULED',
+      correctiveActionsCount: 0,
+    },
+  ]);
+
+  // Communication & Communities State
+  const [announcements, setAnnouncements] = useState<any[]>([
+    {
+      id: 'ann-1',
+      title: '🌟 Q2 National Visual Merchandising Excellence Winners',
+      content: 'Congratulations to Store #12 and Store #04 for achieving 100% compliance during corporate inspection.',
+      author: 'Operations Director',
+      target: 'All Stores & Managers',
+      isPinned: true,
+      date: '2 hours ago',
+    },
+    {
+      id: 'ann-2',
+      title: 'Important: Updated Refrigerator Calibration Protocols',
+      content: 'All store supervisors must review the new standard temperature ranges before Monday morning.',
+      author: 'Health & Safety Lead',
+      target: 'Store Managers',
+      isPinned: false,
+      date: 'Yesterday',
+    },
+  ]);
+
+  const [communityPosts, setCommunityPosts] = useState<any[]>([
+    {
+      id: 'p-1',
+      author: 'Alex Frontline',
+      store: 'Downtown Store #12',
+      content: 'Our weekend promo display achieved +18% footfall! Here is the completed setup.',
+      likes: 14,
+      comments: 3,
+      time: '3 hours ago',
+    },
+  ]);
+  const [newPostContent, setNewPostContent] = useState('');
+
+  // Learning Management State
+  const [courses, setCourses] = useState<any[]>([
+    {
+      id: 'c-1',
+      title: 'Frontline Food Safety & Cooler Temperature Controls',
+      category: 'Compliance & Safety',
+      estimatedMinutes: 20,
+      completionRate: 88,
+      isMandatory: true,
+      modulesCount: 4,
+    },
+    {
+      id: 'c-2',
+      title: 'Customer De-escalation & Frontline Excellence',
+      category: 'Customer Service',
+      estimatedMinutes: 30,
+      completionRate: 94,
+      isMandatory: false,
+      modulesCount: 5,
+    },
+    {
+      id: 'c-3',
+      title: 'OSHA Fire Protocols & Emergency Store Evacuation',
+      category: 'Emergency Response',
+      estimatedMinutes: 15,
+      completionRate: 72,
+      isMandatory: true,
+      modulesCount: 3,
+    },
+  ]);
+
+  // Locations / Stores State
+  const [stores, setStores] = useState<any[]>([
+    { id: 's-1', name: 'Downtown Supermarket #12', code: 'ST-012', region: 'Île-de-France', city: 'Paris', employeesCount: 24, score: '96%' },
+    { id: 's-2', name: 'North Mall Store #04', code: 'ST-004', region: 'Auvergne-Rhône-Alpes', city: 'Lyon', employeesCount: 18, score: '91%' },
+    { id: 's-3', name: 'East Avenue Express #09', code: 'ST-009', region: 'Provence-Alpes-Côte d\'Azur', city: 'Marseille', employeesCount: 12, score: '88%' },
+  ]);
+
+  // Employees State
+  const [employees, setEmployees] = useState<any[]>([
+    { id: 'e-1', name: 'Sarah Manager', email: 'sarah.manager@globalretail.com', role: 'Store Manager', store: 'Downtown Supermarket #12', status: 'ACTIVE' },
+    { id: 'e-2', name: 'Alex Frontline', email: 'alex.frontline@globalretail.com', role: 'Frontline Associate', store: 'Downtown Supermarket #12', status: 'ACTIVE' },
+    { id: 'e-3', name: 'David Lee', email: 'david.lee@globalretail.com', role: 'Team Leader', store: 'East Avenue Express #09', status: 'ACTIVE' },
+    { id: 'e-4', name: 'Elena Rostova', email: 'elena.rostova@globalretail.com', role: 'Regional Manager', store: 'Multi-store (All Paris)', status: 'ACTIVE' },
+  ]);
+
+  // Modals State
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [isRejecting, setIsRejecting] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteName, setInviteName] = useState('');
+  const [inviteRole, setInviteRole] = useState('Employee');
 
   // Handle Hash route matching
   useEffect(() => {
@@ -160,10 +308,9 @@ export default function AppRoot() {
           window.location.hash = '#/app/dashboard';
         }
       } else {
-        setLoginError(data.error?.message || 'Invalid username or password. Please verify your credentials.');
+        setLoginError(data.error?.message || 'Invalid username or password.');
       }
     } catch (err: any) {
-      // Local fallback in case backend is offline
       if (
         (email === 'sarah.manager@globalretail.com' && password === 'Password123!') ||
         (email === 'alex.frontline@globalretail.com' && password === 'Welcome123!')
@@ -173,6 +320,7 @@ export default function AppRoot() {
           firstName: email.includes('sarah') ? 'Sarah' : 'Alex',
           lastName: email.includes('sarah') ? 'Manager' : 'Frontline',
           email,
+          role: email.includes('sarah') ? 'Store Manager' : 'Frontline Associate',
         });
       } else {
         setLoginError('Unable to connect to authentication server. Please check your network.');
@@ -241,29 +389,59 @@ export default function AppRoot() {
     setShowCreateModal(false);
   };
 
+  const handleInviteEmployee = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail.trim() || !inviteName.trim()) return;
+    const newEmp = {
+      id: `e-${Date.now()}`,
+      name: inviteName,
+      email: inviteEmail,
+      role: inviteRole,
+      store: 'Downtown Supermarket #12',
+      status: 'ACTIVE',
+    };
+    setEmployees([...employees, newEmp]);
+    setInviteEmail('');
+    setInviteName('');
+    setShowInviteModal(false);
+    alert(`Invitation sent to ${newEmp.email}`);
+  };
+
+  const handleCreatePost = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPostContent.trim()) return;
+    const newPost = {
+      id: `p-${Date.now()}`,
+      author: currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName}` : 'Store Team',
+      store: 'Downtown Store #12',
+      content: newPostContent,
+      likes: 1,
+      comments: 0,
+      time: 'Just now',
+    };
+    setCommunityPosts([newPost, ...communityPosts]);
+    setNewPostContent('');
+  };
+
   // -------------------------------------------------------------
-  // VIEW 1: IDENTICAL YOOBIC ONE LOGIN VIEW (https://app.yoobic.com/#/noauth/login)
+  // VIEW 1: AUTHENTIC YOOBIC ONE LOGIN (app.yoobic.com/#/noauth/login)
   // -------------------------------------------------------------
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col justify-between selection:bg-blue-500 selection:text-white">
-        {/* Top Header Bar */}
         <header className="w-full px-6 py-5 flex items-center justify-between border-b border-slate-200/70 bg-white/70 backdrop-blur-md">
           <YoobicLogo />
-
-          {/* Language Selector */}
           <div className="relative">
             <button
               onClick={() => setShowLangDropdown(!showLangDropdown)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition border border-slate-200 shadow-2xs"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition border border-slate-200 shadow-2xs cursor-pointer"
             >
               <Globe className="w-3.5 h-3.5 text-blue-600" />
               <span>{language}</span>
               <ChevronDown className="w-3 h-3 text-slate-400" />
             </button>
-
             {showLangDropdown && (
-              <div className="absolute right-0 mt-2 w-36 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-50 animate-in fade-in zoom-in-95">
+              <div className="absolute right-0 mt-2 w-36 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-50">
                 {(['English', 'Français', 'Español', 'Deutsch'] as const).map((lang) => (
                   <button
                     key={lang}
@@ -271,7 +449,7 @@ export default function AppRoot() {
                       setLanguage(lang);
                       setShowLangDropdown(false);
                     }}
-                    className={`w-full text-left px-3.5 py-2 text-xs font-medium transition ${
+                    className={`w-full text-left px-3.5 py-2 text-xs font-medium transition cursor-pointer ${
                       language === lang ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-600 hover:bg-slate-50'
                     }`}
                   >
@@ -283,11 +461,9 @@ export default function AppRoot() {
           </div>
         </header>
 
-        {/* Center Login Container */}
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="w-full max-w-[430px] space-y-6">
             <div className="bg-white rounded-2xl p-8 sm:p-10 shadow-xl shadow-slate-200/50 border border-slate-100 space-y-6">
-              {/* Header Title inside card */}
               <div className="text-center space-y-2">
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900">
                   Log in to YOOBIC ONE
@@ -297,27 +473,23 @@ export default function AppRoot() {
                 </p>
               </div>
 
-              {/* Error Message */}
               {loginError && (
-                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-red-700 text-xs animate-shake">
+                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-red-700 text-xs">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                   <p className="font-medium leading-relaxed">{loginError}</p>
                 </div>
               )}
 
-              {/* Forgot Password Notification */}
               {forgotPasswordMessage && (
                 <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 flex items-start gap-2.5 text-blue-700 text-xs">
                   <HelpCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <p className="font-medium leading-relaxed">
-                    A secure password reset link has been dispatched to your corporate email address.
+                    A secure password reset link has been dispatched to your corporate email.
                   </p>
                 </div>
               )}
 
-              {/* Login Form */}
               <form onSubmit={handleLogin} className="space-y-4">
-                {/* Username / Email Field */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-700 block">
                     Username or Email address
@@ -330,12 +502,11 @@ export default function AppRoot() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="e.g. name@company.com"
-                      className="w-full pl-10 pr-4 py-2.5 text-sm bg-white rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition shadow-2xs"
+                      className="w-full pl-10 pr-4 py-2.5 text-sm bg-white rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-2xs"
                     />
                   </div>
                 </div>
 
-                {/* Password Field */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-700 block">
                     Password
@@ -348,19 +519,18 @@ export default function AppRoot() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter your password"
-                      className="w-full pl-10 pr-10 py-2.5 text-sm bg-white rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition shadow-2xs"
+                      className="w-full pl-10 pr-10 py-2.5 text-sm bg-white rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-2xs"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition"
+                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition cursor-pointer"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
 
-                {/* Form Actions: Remember me & Forgot Password */}
                 <div className="flex items-center justify-between text-xs pt-1">
                   <label className="flex items-center gap-2 text-slate-600 font-medium cursor-pointer">
                     <input
@@ -374,13 +544,12 @@ export default function AppRoot() {
                   <button
                     type="button"
                     onClick={() => setForgotPasswordMessage(true)}
-                    className="font-semibold text-blue-600 hover:text-blue-700 transition"
+                    className="font-semibold text-blue-600 hover:text-blue-700 transition cursor-pointer"
                   >
                     Forgot password?
                   </button>
                 </div>
 
-                {/* Primary Submit Button */}
                 <button
                   type="submit"
                   disabled={loginLoading}
@@ -397,7 +566,6 @@ export default function AppRoot() {
                 </button>
               </form>
 
-              {/* SSO Divider */}
               <div className="relative flex items-center justify-center">
                 <div className="border-t border-slate-200 w-full" />
                 <span className="bg-white px-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest absolute">
@@ -405,7 +573,6 @@ export default function AppRoot() {
                 </span>
               </div>
 
-              {/* Single Sign-On Button */}
               <button
                 type="button"
                 onClick={() => setShowSsoModal(true)}
@@ -415,7 +582,6 @@ export default function AppRoot() {
                 <span>Log in with Single Sign-On (SSO)</span>
               </button>
 
-              {/* Quick Fill Demo Credentials */}
               <div className="pt-2 border-t border-slate-100 space-y-2">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 text-center flex items-center justify-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-amber-500" />
@@ -442,7 +608,6 @@ export default function AppRoot() {
               </div>
             </div>
 
-            {/* Help & Support note */}
             <p className="text-center text-xs text-slate-500">
               Need assistance?{' '}
               <a href="#" className="font-semibold text-blue-600 hover:underline">
@@ -452,7 +617,6 @@ export default function AppRoot() {
           </div>
         </div>
 
-        {/* Global Footer */}
         <footer className="w-full py-4 px-6 border-t border-slate-200/70 bg-white/50 text-slate-500 text-xs flex flex-col sm:flex-row items-center justify-between gap-3">
           <p>© 2026 YOOBIC Inc. All rights reserved.</p>
           <div className="flex items-center gap-6">
@@ -463,24 +627,23 @@ export default function AppRoot() {
           </div>
         </footer>
 
-        {/* SSO Modal */}
         {showSsoModal && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95">
+            <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
               <div className="flex items-center justify-between border-b pb-3">
                 <h3 className="font-bold text-slate-900 text-sm">Enterprise SSO Login</h3>
                 <button
                   onClick={() => setShowSsoModal(false)}
-                  className="text-slate-400 hover:text-slate-600 font-bold"
+                  className="text-slate-400 hover:text-slate-600 font-bold cursor-pointer"
                 >
                   ✕
                 </button>
               </div>
               <p className="text-xs text-slate-500">
-                Enter your company's YOOBIC workspace domain to be routed to your identity provider (Okta, Azure AD, Ping).
+                Enter your company's workspace ID to route to Okta or Azure AD.
               </p>
               <div>
-                <label className="text-xs font-bold text-slate-700">Company Workspace ID</label>
+                <label className="text-xs font-bold text-slate-700">Company Domain</label>
                 <div className="flex items-center mt-1">
                   <input
                     type="text"
@@ -498,7 +661,7 @@ export default function AppRoot() {
                 <button
                   type="button"
                   onClick={() => setShowSsoModal(false)}
-                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
+                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -508,7 +671,7 @@ export default function AppRoot() {
                     handleQuickDemoLogin('manager');
                     setShowSsoModal(false);
                   }}
-                  className="px-4 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-4 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer"
                 >
                   Continue to SSO →
                 </button>
@@ -521,69 +684,109 @@ export default function AppRoot() {
   }
 
   // -------------------------------------------------------------
-  // VIEW 2: LOGGED-IN ENTERPRISE WORKSPACE DASHBOARD
+  // VIEW 2: FULL ENTERPRISE WORKSPACE (CONFORMING TO FUNCTIONAL SPEC)
   // -------------------------------------------------------------
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
+    <div className="flex h-screen overflow-hidden bg-slate-50">
+      {/* Sidebar Navigation */}
       <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col justify-between p-4 shadow-xl">
-        <div>
-          <div className="flex items-center gap-3 px-2 py-4 mb-6 border-b border-slate-800">
+        <div className="space-y-6">
+          <div className="flex items-center gap-3 px-2 py-3 border-b border-slate-800">
             <YoobicLogo showTag={true} />
           </div>
 
           <nav className="space-y-1">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                activeTab === 'dashboard' ? 'bg-blue-600 text-white font-bold' : 'hover:bg-slate-800'
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                activeTab === 'dashboard' ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-800 text-slate-400 hover:text-white'
               }`}
             >
-              <ClipboardList className="w-5 h-5" /> Dashboard
+              <ClipboardList className="w-4 h-4" /> Dashboard
             </button>
             <button
               onClick={() => setActiveTab('tasks')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                activeTab === 'tasks' ? 'bg-blue-600 text-white font-bold' : 'hover:bg-slate-800'
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                activeTab === 'tasks' ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-800 text-slate-400 hover:text-white'
               }`}
             >
-              <CheckCircle2 className="w-5 h-5" /> Tasks & Operations
+              <CheckSquare className="w-4 h-4" /> Tasks & Operations
             </button>
             <button
-              onClick={() => setActiveTab('stores')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                activeTab === 'stores' ? 'bg-blue-600 text-white font-bold' : 'hover:bg-slate-800'
+              onClick={() => setActiveTab('audits')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                activeTab === 'audits' ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-800 text-slate-400 hover:text-white'
               }`}
             >
-              <Building2 className="w-5 h-5" /> Locations & Stores
+              <ShieldCheck className="w-4 h-4" /> Audits & Visits
+            </button>
+            <button
+              onClick={() => setActiveTab('communication')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                activeTab === 'communication' ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <Megaphone className="w-4 h-4" /> Communication
+            </button>
+            <button
+              onClick={() => setActiveTab('learning')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                activeTab === 'learning' ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <GraduationCap className="w-4 h-4" /> Learning Academy
+            </button>
+            <button
+              onClick={() => setActiveTab('locations')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                activeTab === 'locations' ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <Building2 className="w-4 h-4" /> Locations & Stores
             </button>
             <button
               onClick={() => setActiveTab('employees')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                activeTab === 'employees' ? 'bg-blue-600 text-white font-bold' : 'hover:bg-slate-800'
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                activeTab === 'employees' ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-800 text-slate-400 hover:text-white'
               }`}
             >
-              <Users className="w-5 h-5" /> Frontline Teams
+              <Users className="w-4 h-4" /> Employees & Teams
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                activeTab === 'analytics' ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" /> Analytics & Reports
+            </button>
+            <button
+              onClick={() => setActiveTab('subscription')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                activeTab === 'subscription' ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <CreditCard className="w-4 h-4" /> Subscription & SaaS
             </button>
           </nav>
         </div>
 
         {/* User Card & Logout */}
-        <div className="p-3 bg-slate-800 rounded-xl space-y-3">
+        <div className="p-3 bg-slate-800/90 rounded-xl space-y-3 border border-slate-700/50">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs">
+            <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs shadow-xs">
               {currentUser?.firstName?.[0] || 'U'}
             </div>
             <div className="overflow-hidden flex-1">
               <p className="text-xs font-bold text-white truncate">
                 {currentUser?.firstName} {currentUser?.lastName}
               </p>
-              <p className="text-[11px] text-slate-400 truncate">{currentUser?.email}</p>
+              <p className="text-[10px] text-blue-400 truncate">{currentUser?.role || 'Organization Owner'}</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-1.5 text-xs font-semibold text-rose-300 hover:text-white bg-slate-700/60 hover:bg-rose-600 rounded-lg transition"
+            className="w-full flex items-center justify-center gap-2 py-1.5 text-xs font-semibold text-rose-300 hover:text-white bg-slate-700/60 hover:bg-rose-600 rounded-lg transition cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" /> Log Out
           </button>
@@ -591,164 +794,520 @@ export default function AppRoot() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto bg-slate-50 flex flex-col">
+      <main className="flex-1 overflow-y-auto flex flex-col">
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between">
+        <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-20">
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-slate-800 capitalize">{activeTab}</h2>
+            <h2 className="text-lg font-bold text-slate-800 uppercase tracking-wide">
+              {activeTab === 'dashboard' && 'Operations Dashboard'}
+              {activeTab === 'tasks' && 'Operational Checklists & Tasks'}
+              {activeTab === 'audits' && 'Audits, Visits & Inspections'}
+              {activeTab === 'communication' && 'Corporate Bulletins & Communities'}
+              {activeTab === 'learning' && 'Frontline Learning Academy'}
+              {activeTab === 'locations' && 'Organizational Hierarchy & Stores'}
+              {activeTab === 'employees' && 'Employee Directory & Roles'}
+              {activeTab === 'analytics' && 'Operational Compliance Analytics'}
+              {activeTab === 'subscription' && 'Enterprise SaaS Subscription'}
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <input
                 type="text"
-                placeholder="Search tasks, stores, checklists..."
-                className="pl-9 pr-4 py-1.5 text-sm bg-slate-100 rounded-lg border-none focus:ring-2 focus:ring-blue-500 outline-none w-72"
+                placeholder="Global search across stores, tasks, audits..."
+                className="pl-9 pr-4 py-1.5 text-xs bg-slate-100 rounded-lg border-none focus:ring-2 focus:ring-blue-500 outline-none w-64"
               />
             </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow-sm transition cursor-pointer"
-            >
-              <Plus className="w-4 h-4" /> Create Task
-            </button>
+            {activeTab === 'tasks' && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center gap-2 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition cursor-pointer"
+              >
+                <Plus className="w-4 h-4" /> New Task
+              </button>
+            )}
+            {activeTab === 'employees' && (
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="flex items-center gap-2 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition cursor-pointer"
+              >
+                <Plus className="w-4 h-4" /> Invite Employee
+              </button>
+            )}
           </div>
         </header>
 
-        {/* Content Body */}
-        <div className="p-8 space-y-8">
-          {/* Metrics Row */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <MetricCard
-              title="Daily Tasks"
-              value={tasks.length}
-              subtitle="All operational checklists"
-              icon={ClipboardList}
-              color="bg-blue-600"
-            />
-            <MetricCard
-              title="Validation Queue"
-              value={tasks.filter((t) => t.status === 'SUBMITTED').length}
-              subtitle="Awaiting manager sign-off"
-              icon={Clock}
-              color="bg-amber-500"
-            />
-            <MetricCard
-              title="Approved & Compliant"
-              value={tasks.filter((t) => t.status === 'APPROVED').length}
-              subtitle="Verified evidence"
-              icon={CheckCircle2}
-              color="bg-emerald-600"
-            />
-            <MetricCard
-              title="Compliance Rate"
-              value={`${Math.round(
-                (tasks.filter((t) => t.status === 'APPROVED').length / (tasks.length || 1)) * 100
-              )}%`}
-              subtitle="Real-time multi-location average"
-              icon={ShieldCheck}
-              color="bg-indigo-600"
-            />
-          </div>
+        {/* Dynamic Tab Body */}
+        <div className="p-8 space-y-6 flex-1">
+          {/* TAB 1: DASHBOARD */}
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                <MetricCard title="Tasks Today" value={tasks.length} subtitle="Active operational tasks" icon={ClipboardList} color="bg-blue-600" />
+                <MetricCard title="Pending Validation" value={tasks.filter((t) => t.status === 'SUBMITTED').length} subtitle="Requires manager sign-off" icon={Clock} color="bg-amber-500" />
+                <MetricCard title="Audit Compliance" value="94.2%" subtitle="Average across 20 locations" icon={ShieldCheck} color="bg-emerald-600" />
+                <MetricCard title="Training Completion" value="86%" subtitle="Assigned frontline courses" icon={GraduationCap} color="bg-indigo-600" />
+              </div>
 
-          {/* Operational Tasks Table */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-slate-800">Operational Checklists & Action Items</h3>
-                <p className="text-xs text-slate-500">Live operational execution across all assigned stores</p>
+              {/* Live Stores Performance Ranking */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-800 text-sm">Store Performance & Compliance Benchmarking</h3>
+                    <p className="text-xs text-slate-500">Live operational execution across all assigned retail locations</p>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('analytics')}
+                    className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer"
+                  >
+                    View detailed analytics →
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-600">
+                    <thead className="bg-slate-50 text-slate-700 uppercase font-bold tracking-wider">
+                      <tr>
+                        <th className="px-6 py-3">Store Name</th>
+                        <th className="px-6 py-3">Region</th>
+                        <th className="px-6 py-3">Store Manager</th>
+                        <th className="px-6 py-3">Checklists Completed</th>
+                        <th className="px-6 py-3">Compliance Score</th>
+                        <th className="px-6 py-3 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {stores.map((s) => (
+                        <tr key={s.id} className="hover:bg-slate-50">
+                          <td className="px-6 py-3.5 font-bold text-slate-900">{s.name}</td>
+                          <td className="px-6 py-3.5">{s.region}</td>
+                          <td className="px-6 py-3.5">Sarah Manager</td>
+                          <td className="px-6 py-3.5">18 / 18 (100%)</td>
+                          <td className="px-6 py-3.5 font-bold text-emerald-600">{s.score}</td>
+                          <td className="px-6 py-3.5 text-right">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                              COMPLIANT
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
+          )}
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-600">
-                <thead className="bg-slate-50 text-slate-700 text-xs font-semibold uppercase tracking-wider">
+          {/* TAB 2: TASKS & OPERATIONS */}
+          {activeTab === 'tasks' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm">Operational Checklists & Action Items</h3>
+                  <p className="text-xs text-slate-500">Live operational execution across all assigned stores</p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-600">
+                  <thead className="bg-slate-50 text-slate-700 uppercase font-bold tracking-wider">
+                    <tr>
+                      <th className="px-6 py-3">Task Details</th>
+                      <th className="px-6 py-3">Location</th>
+                      <th className="px-6 py-3">Assignee</th>
+                      <th className="px-6 py-3">Priority</th>
+                      <th className="px-6 py-3">Status</th>
+                      <th className="px-6 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {tasks.map((task) => (
+                      <tr key={task.id} className="hover:bg-slate-50">
+                        <td className="px-6 py-3.5 font-bold text-slate-900">
+                          {task.title}
+                          {task.requiresPhoto && (
+                            <span className="ml-2 text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium border border-blue-200">
+                              📷 Photo Proof Required
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-3.5">{task.storeName}</td>
+                        <td className="px-6 py-3.5 font-medium">{task.assigneeName}</td>
+                        <td className="px-6 py-3.5">
+                          <span
+                            className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+                              task.priority === 'CRITICAL'
+                                ? 'bg-red-100 text-red-700'
+                                : task.priority === 'HIGH'
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-blue-100 text-blue-700'
+                            }`}
+                          >
+                            {task.priority}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <span
+                            className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full ${
+                              task.status === 'APPROVED'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : task.status === 'SUBMITTED'
+                                ? 'bg-amber-100 text-amber-700'
+                                : task.status === 'REJECTED'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {task.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3.5 text-right">
+                          <button
+                            onClick={() => setSelectedTask(task)}
+                            className="px-3 py-1 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition cursor-pointer"
+                          >
+                            Inspect & Validate
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: AUDITS & VISITS */}
+          {activeTab === 'audits' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-800 text-sm">Store Audits & Field Inspection Visits</h3>
+                    <p className="text-xs text-slate-500">Evaluations, scoring criteria, and corrective actions</p>
+                  </div>
+                </div>
+                <table className="w-full text-left text-xs text-slate-600">
+                  <thead className="bg-slate-50 text-slate-700 uppercase font-bold tracking-wider">
+                    <tr>
+                      <th className="px-6 py-3">Audit Template</th>
+                      <th className="px-6 py-3">Target Store</th>
+                      <th className="px-6 py-3">Assigned Auditor</th>
+                      <th className="px-6 py-3">Scheduled Date</th>
+                      <th className="px-6 py-3">Score</th>
+                      <th className="px-6 py-3 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {audits.map((a) => (
+                      <tr key={a.id} className="hover:bg-slate-50">
+                        <td className="px-6 py-3.5 font-bold text-slate-900">{a.templateTitle}</td>
+                        <td className="px-6 py-3.5">{a.storeName}</td>
+                        <td className="px-6 py-3.5">{a.auditorName}</td>
+                        <td className="px-6 py-3.5">{a.scheduledDate}</td>
+                        <td className="px-6 py-3.5 font-bold text-blue-600">{a.score ? `${a.score}%` : 'Pending'}</td>
+                        <td className="px-6 py-3.5 text-right">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            a.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {a.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: COMMUNICATION & COMMUNITIES */}
+          {activeTab === 'communication' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-1 space-y-4">
+                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <Megaphone className="w-4 h-4 text-blue-600" /> Corporate Announcements
+                </h3>
+                {announcements.map((ann) => (
+                  <div key={ann.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                        {ann.target}
+                      </span>
+                      <span className="text-[10px] text-slate-400">{ann.date}</span>
+                    </div>
+                    <h4 className="font-bold text-xs text-slate-900">{ann.title}</h4>
+                    <p className="text-xs text-slate-600 leading-relaxed">{ann.content}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="md:col-span-2 space-y-4">
+                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <Users className="w-4 h-4 text-blue-600" /> Frontline Community Wall
+                </h3>
+                <form onSubmit={handleCreatePost} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
+                  <textarea
+                    rows={2}
+                    value={newPostContent}
+                    onChange={(e) => setNewPostContent(e.target.value)}
+                    placeholder="Share an operational update, merchandising photo, or recognition with frontline teams..."
+                    className="w-full text-xs p-3 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Send className="w-3.5 h-3.5" /> Publish Post
+                    </button>
+                  </div>
+                </form>
+
+                {communityPosts.map((post) => (
+                  <div key={post.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-slate-900">{post.author}</p>
+                        <p className="text-[10px] text-slate-400">{post.store} • {post.time}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-700">{post.content}</p>
+                    <div className="pt-2 border-t border-slate-100 flex items-center gap-4 text-xs text-slate-500">
+                      <span>👍 {post.likes} Likes</span>
+                      <span>💬 {post.comments} Comments</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: LEARNING ACADEMY (LMS) */}
+          {activeTab === 'learning' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {courses.map((course) => (
+                <div key={course.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                      {course.category}
+                    </span>
+                    {course.isMandatory && (
+                      <span className="text-[10px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded">
+                        MANDATORY
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="font-bold text-sm text-slate-900 leading-snug">{course.title}</h4>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs text-slate-500">
+                      <span>Completion Rate</span>
+                      <span className="font-bold text-slate-800">{course.completionRate}%</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                      <div className="bg-blue-600 h-full rounded-full" style={{ width: `${course.completionRate}%` }} />
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span>{course.modulesCount} Interactive Modules</span>
+                    <span>⏱ {course.estimatedMinutes} min</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* TAB 6: LOCATIONS & STORES */}
+          {activeTab === 'locations' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm">Store Network Hierarchy</h3>
+                  <p className="text-xs text-slate-500">Regions, Districts, Retail Stores, and Department Teams</p>
+                </div>
+              </div>
+              <table className="w-full text-left text-xs text-slate-600">
+                <thead className="bg-slate-50 text-slate-700 uppercase font-bold tracking-wider">
                   <tr>
-                    <th className="px-6 py-3">Task Details</th>
-                    <th className="px-6 py-3">Location</th>
-                    <th className="px-6 py-3">Assignee</th>
-                    <th className="px-6 py-3">Priority</th>
-                    <th className="px-6 py-3">Status</th>
-                    <th className="px-6 py-3 text-right">Actions</th>
+                    <th className="px-6 py-3">Store Name</th>
+                    <th className="px-6 py-3">Store Code</th>
+                    <th className="px-6 py-3">Region</th>
+                    <th className="px-6 py-3">City</th>
+                    <th className="px-6 py-3">Employees</th>
+                    <th className="px-6 py-3 text-right">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {tasks.map((task) => (
-                    <tr key={task.id} className="hover:bg-slate-50/80 transition">
-                      <td className="px-6 py-4 font-medium text-slate-900">
-                        {task.title}
-                        {task.requiresPhoto && (
-                          <span className="ml-2 text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-normal">
-                            Photo Required
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-slate-500">{task.storeName}</td>
-                      <td className="px-6 py-4 text-slate-600">{task.assigneeName}</td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-2 py-1 text-xs font-bold rounded ${
-                            task.priority === 'CRITICAL'
-                              ? 'bg-red-100 text-red-700'
-                              : task.priority === 'HIGH'
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-blue-100 text-blue-700'
-                          }`}
-                        >
-                          {task.priority}
+                  {stores.map((s) => (
+                    <tr key={s.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-3.5 font-bold text-slate-900">{s.name}</td>
+                      <td className="px-6 py-3.5 font-mono">{s.code}</td>
+                      <td className="px-6 py-3.5">{s.region}</td>
+                      <td className="px-6 py-3.5">{s.city}</td>
+                      <td className="px-6 py-3.5 font-medium">{s.employeesCount} staff</td>
+                      <td className="px-6 py-3.5 text-right">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                          ACTIVE
                         </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
-                            task.status === 'APPROVED'
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : task.status === 'SUBMITTED'
-                              ? 'bg-amber-100 text-amber-700'
-                              : task.status === 'REJECTED'
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-slate-100 text-slate-700'
-                          }`}
-                        >
-                          {task.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => setSelectedTask(task)}
-                          className="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition cursor-pointer"
-                        >
-                          Inspect & Validate
-                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
+          )}
+
+          {/* TAB 7: EMPLOYEES & TEAMS */}
+          {activeTab === 'employees' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm">Employee Directory & Role Scopes</h3>
+                  <p className="text-xs text-slate-500">Frontline workers, managers, and administrative roles</p>
+                </div>
+              </div>
+              <table className="w-full text-left text-xs text-slate-600">
+                <thead className="bg-slate-50 text-slate-700 uppercase font-bold tracking-wider">
+                  <tr>
+                    <th className="px-6 py-3">Employee Name</th>
+                    <th className="px-6 py-3">Email</th>
+                    <th className="px-6 py-3">Role</th>
+                    <th className="px-6 py-3">Assigned Location</th>
+                    <th className="px-6 py-3 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {employees.map((e) => (
+                    <tr key={e.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-3.5 font-bold text-slate-900">{e.name}</td>
+                      <td className="px-6 py-3.5 font-mono text-slate-500">{e.email}</td>
+                      <td className="px-6 py-3.5">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">
+                          {e.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5">{e.store}</td>
+                      <td className="px-6 py-3.5 text-right">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                          {e.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* TAB 8: ANALYTICS & REPORTS */}
+          {activeTab === 'analytics' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-2">
+                  <p className="text-xs font-bold text-slate-400 uppercase">Average Task Completion Time</p>
+                  <h3 className="text-2xl font-black text-slate-900">18.4 min</h3>
+                  <p className="text-xs text-emerald-600 font-semibold">↓ 3.2 min faster than target SLA</p>
+                </div>
+                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-2">
+                  <p className="text-xs font-bold text-slate-400 uppercase">First-Time Approval Rate</p>
+                  <h3 className="text-2xl font-black text-slate-900">96.8%</h3>
+                  <p className="text-xs text-emerald-600 font-semibold">Only 3.2% required corrective resubmission</p>
+                </div>
+                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-2">
+                  <p className="text-xs font-bold text-slate-400 uppercase">Frontline Engagement</p>
+                  <h3 className="text-2xl font-black text-slate-900">99.1%</h3>
+                  <p className="text-xs text-blue-600 font-semibold">Active mobile syncs within past 24 hours</p>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm">Export Comprehensive Operational Report</h4>
+                  <p className="text-xs text-slate-500">Download store compliance audits, evidence photos index, and checklist responses.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => alert('Exporting CSV report for current date range...')}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Export CSV
+                  </button>
+                  <button
+                    onClick={() => alert('Generating executive PDF report...')}
+                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Export PDF
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 9: SUBSCRIPTION & SAAS LIMITS */}
+          {activeTab === 'subscription' && (
+            <div className="space-y-6 max-w-4xl">
+              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-6">
+                <div className="flex items-center justify-between border-b pb-4">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-1 rounded">
+                      ENTERPRISE MULTI-STORE TIER
+                    </span>
+                    <h3 className="text-lg font-bold text-slate-900 mt-2">Global Retailers Corp Plan</h3>
+                    <p className="text-xs text-slate-500">Subscription Status: Active • Renews Annually</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-2xl font-black text-slate-900">$1,450</span>
+                    <span className="text-xs text-slate-400"> / month</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-slate-500">Stores / Locations</p>
+                    <p className="text-sm font-bold text-slate-900">20 / Unlimited</p>
+                    <div className="w-full bg-slate-100 h-1.5 rounded-full">
+                      <div className="bg-blue-600 h-full rounded-full w-1/4" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-slate-500">Frontline Users</p>
+                    <p className="text-sm font-bold text-slate-900">142 / 500 licensed</p>
+                    <div className="w-full bg-slate-100 h-1.5 rounded-full">
+                      <div className="bg-emerald-600 h-full rounded-full w-1/3" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-slate-500">Encrypted Object Storage</p>
+                    <p className="text-sm font-bold text-slate-900">42 GB / 1,000 GB</p>
+                    <div className="w-full bg-slate-100 h-1.5 rounded-full">
+                      <div className="bg-indigo-600 h-full rounded-full w-[4%]" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
-      {/* Inspection & Validation Modal */}
+      {/* Task Inspection Modal */}
       {selectedTask && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl max-w-2xl w-full p-6 space-y-6 shadow-2xl">
             <div className="flex items-start justify-between border-b pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">{selectedTask.title}</h3>
+                <h3 className="text-base font-bold text-slate-900">{selectedTask.title}</h3>
                 <p className="text-xs text-slate-500">{selectedTask.storeName} • {selectedTask.assigneeName}</p>
               </div>
               <button
                 onClick={() => setSelectedTask(null)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            {/* Evidence Inspection */}
             {selectedTask.evidenceUrl ? (
               <div className="space-y-2">
                 <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Captured Photo Evidence</p>
@@ -761,12 +1320,11 @@ export default function AppRoot() {
                 </div>
               </div>
             ) : (
-              <div className="p-4 bg-slate-50 rounded-lg text-slate-500 text-sm">
-                No visual evidence required or submitted.
+              <div className="p-4 bg-slate-50 rounded-lg text-slate-500 text-xs">
+                No visual evidence required for this task.
               </div>
             )}
 
-            {/* Rejection Form */}
             {isRejecting && (
               <div className="space-y-2">
                 <label className="text-xs font-bold text-red-700 uppercase">Reason for Rejection (Required)</label>
@@ -775,23 +1333,22 @@ export default function AppRoot() {
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   placeholder="Explain why this task was rejected and what corrective action is needed..."
-                  className="w-full text-sm p-3 border rounded-lg border-red-300 focus:ring-2 focus:ring-red-500 outline-none"
+                  className="w-full text-xs p-3 border rounded-lg border-red-300 focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
             )}
 
-            {/* Action Buttons */}
             <div className="flex items-center justify-end gap-3 pt-4 border-t">
               <button
                 onClick={() => setSelectedTask(null)}
-                className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
+                className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
               >
                 Close
               </button>
               {isRejecting ? (
                 <button
                   onClick={() => handleReject(selectedTask.id)}
-                  className="px-4 py-2 text-sm font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg"
+                  className="px-4 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg cursor-pointer"
                 >
                   Confirm Rejection
                 </button>
@@ -799,13 +1356,13 @@ export default function AppRoot() {
                 <>
                   <button
                     onClick={() => setIsRejecting(true)}
-                    className="px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-lg"
+                    className="px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg cursor-pointer"
                   >
                     Reject Task
                   </button>
                   <button
                     onClick={() => handleApprove(selectedTask.id)}
-                    className="px-4 py-2 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm"
+                    className="px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm cursor-pointer"
                   >
                     Approve & Sign Off
                   </button>
@@ -823,7 +1380,7 @@ export default function AppRoot() {
             onSubmit={handleCreateTask}
             className="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl"
           >
-            <h3 className="text-lg font-bold text-slate-900">Create Operational Task</h3>
+            <h3 className="text-base font-bold text-slate-900">Create Operational Task</h3>
             <div>
               <label className="text-xs font-bold text-slate-700">Task Title</label>
               <input
@@ -832,22 +1389,86 @@ export default function AppRoot() {
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
                 placeholder="e.g. End-of-Day Store Cash Drawer Audit"
-                className="mt-1 w-full text-sm p-2.5 border rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                className="mt-1 w-full text-xs p-2.5 border rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
             <div className="flex items-center justify-end gap-2 pt-4 border-t">
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
+                className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                className="px-4 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer"
               >
                 Create Task
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Invite Employee Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <form
+            onSubmit={handleInviteEmployee}
+            className="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl"
+          >
+            <h3 className="text-base font-bold text-slate-900">Invite Employee to Organization</h3>
+            <div>
+              <label className="text-xs font-bold text-slate-700">Full Name</label>
+              <input
+                type="text"
+                required
+                value={inviteName}
+                onChange={(e) => setInviteName(e.target.value)}
+                placeholder="e.g. Marie Dupont"
+                className="mt-1 w-full text-xs p-2.5 border rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700">Corporate Email</label>
+              <input
+                type="email"
+                required
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="marie.dupont@globalretail.com"
+                className="mt-1 w-full text-xs p-2.5 border rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700">Role & Responsibilities</label>
+              <select
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value)}
+                className="mt-1 w-full text-xs p-2.5 border rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              >
+                <option value="Frontline Associate">Frontline Associate (Employee)</option>
+                <option value="Team Leader">Team Leader</option>
+                <option value="Store Manager">Store Manager</option>
+                <option value="Regional Manager">Regional Manager</option>
+                <option value="Trainer">Trainer / Learning Manager</option>
+                <option value="Auditor">Field Auditor</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-4 border-t">
+              <button
+                type="button"
+                onClick={() => setShowInviteModal(false)}
+                className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer"
+              >
+                Send Invitation
               </button>
             </div>
           </form>
