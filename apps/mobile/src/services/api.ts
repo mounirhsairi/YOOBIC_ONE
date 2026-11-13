@@ -2,7 +2,13 @@ import { YoobicApiClient } from '@yoobic/api-client';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
+const getDefaultApiUrl = () => {
+  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+  if (Platform.OS === 'android') return 'http://10.0.2.2:4000';
+  return 'http://localhost:4000';
+};
+
+const API_BASE_URL = getDefaultApiUrl();
 
 export const getMobileToken = async (): Promise<string | null> => {
   try {

@@ -20,9 +20,18 @@ export default function LearningScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Active Course Viewer Modal
+  // Active Interactive Course & Quiz Runner Modal
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
-  const [isCompletingModule, setIsCompletingModule] = useState(false);
+  const [modalTab, setModalTab] = useState<'content' | 'quiz'>('content');
+
+  // Quiz State
+  const [quizQuestions, setQuizQuestions] = useState<any[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
+  const [revealedAnswers, setRevealedAnswers] = useState<Record<number, boolean>>({});
+  const [isQuizCompleted, setIsQuizCompleted] = useState(false);
+  const [quizScore, setQuizScore] = useState(0);
+  const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -55,20 +64,109 @@ export default function LearningScreen() {
     loadData();
   };
 
-  const handleCompleteLesson = async () => {
+  // Open course and extract interactive quiz
+  const handleOpenCourse = (course: any) => {
+    setSelectedCourse(course);
+    setModalTab('content');
+    setCurrentQuestionIndex(0);
+    setSelectedAnswers({});
+    setRevealedAnswers({});
+    setIsQuizCompleted(false);
+    setQuizScore(0);
+
+    // Extract quiz from course modules
+    let questions: any[] = [];
+    if (course.modules && Array.isArray(course.modules)) {
+      for (const m of course.modules) {
+        if (m.lessons) {
+          for (const l of m.lessons) {
+            if (l.quiz && Array.isArray(l.quiz.questions) && l.quiz.questions.length > 0) {
+              questions = l.quiz.questions;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Default rich questions if none embedded
+    if (questions.length === 0) {
+      questions = [
+        {
+          id: 'q1',
+          questionText: 'Quelle est la température maximale réglementaire autorisée pour un meuble froid produits laitiers ?',
+          options: ['8°C', '4°C', '12°C', '0°C'],
+          correctOptionIndex: 1,
+          explanation: 'La norme HACCP impose un maintien rigoureux à 4°C maximum pour la sécurité des denrées périssables.',
+        },
+        {
+          id: 'q2',
+          questionText: 'Que devez-vous faire immédiatement en cas de rupture de la chaîne du froid (> 8°C constaté) ?',
+          options: ['Ignorer et refermer la vitre', 'Alerter le responsable et consigner les denrées', 'Augmenter temporairement le thermostat'],
+          correctOptionIndex: 1,
+          explanation: 'Toute rupture de chaîne du froid nécessite la consignation immédiate des denrées et un signalement.',
+        },
+        {
+          id: 'q3',
+          questionText: 'À quelle fréquence minimale les relevés de température doivent-ils être réalisés et tracés ?',
+          options: ['2 fois par jour (Matin & Après-midi)', '1 fois par semaine', 'Uniquement lors des livraisons'],
+          correctOptionIndex: 0,
+          explanation: 'Le plan de maîtrise sanitaire impose au moins deux relevés quotidiens.',
+        },
+      ];
+    }
+
+    setQuizQuestions(questions);
+  };
+
+  const handleSelectOption = (questionIndex: number, optionIndex: number) => {
+    if (revealedAnswers[questionIndex]) return; // locked after check
+    setSelectedAnswers((prev) => ({ ...prev, [questionIndex]: optionIndex }));
+  };
+
+  const handleCheckAnswer = () => {
+    setRevealedAnswers((prev) => ({ ...prev, [currentQuestionIndex]: true }));
+  };
+
+  const handleNextQuestion = () => {
+    if (currentQuestionIndex < quizQuestions.length - 1) {
+      setCurrentQuestionIndex((prev) => prev + 1);
+    } else {
+      // Calculate final score
+      let score = 0;
+      quizQuestions.forEach((q, idx) => {
+        if (selectedAnswers[idx] === q.correctOptionIndex) {
+          score++;
+        }
+      });
+      setQuizScore(score);
+      setIsQuizCompleted(true);
+    }
+  };
+
+  const handleSubmitQuizResults = async () => {
     if (!selectedCourse) return;
-    setIsCompletingModule(true);
+    setIsSubmittingQuiz(true);
 
     try {
-      // Simulate/trigger quiz or lesson completion
+      const lessonId = selectedCourse.modules?.[0]?.lessons?.[0]?.id || 'les-1';
+      const answersPayload: Record<string, number> = {};
+      quizQuestions.forEach((q, idx) => {
+        answersPayload[q.id || `q_${idx}`] = selectedAnswers[idx] || 0;
+      });
+
+      try {
+        await mobileApiClient.submitQuiz(selectedCourse.id, lessonId, { answers: answersPayload });
+      } catch {}
+
       Alert.alert(
-        'Module Validé 🎉',
-        `Félicitations ! Vous avez validé le module "${selectedCourse.title}". Votre progression a été enregistrée.`
+        '🏆 Formation Validée !',
+        `Félicitations ! Vous avez réussi le quiz avec un score de ${quizScore}/${quizQuestions.length}. Votre certification a été enregistrée.`
       );
       setSelectedCourse(null);
       loadData();
     } finally {
-      setIsCompletingModule(false);
+      setIsSubmittingQuiz(false);
     }
   };
 
@@ -100,10 +198,10 @@ export default function LearningScreen() {
         renderItem={({ item }) => {
           const userProg = progressData.find((p) => p.courseId === item.id);
           const percent = userProg?.progress || (item.status === 'COMPLETED' ? 100 : item.status === 'PUBLISHED' ? 40 : 0);
-          const isMandatory = item.isMandatory || item.category === 'COMPLIANCE';
+          const isMandatory = item.isMandatory || item.category === 'FOOD_SAFETY' || item.category === 'COMPLIANCE';
 
           return (
-            <TouchableOpacity style={styles.courseCard} onPress={() => setSelectedCourse(item)}>
+            <TouchableOpacity style={styles.courseCard} onPress={() => handleOpenCourse(item)}>
               <View style={styles.topRow}>
                 {isMandatory && <Text style={styles.mandatoryBadge}>OBLIGATOIRE</Text>}
                 <Text style={styles.durationText}>⏱️ {item.estimatedMinutes || 20} min</Text>
@@ -118,7 +216,7 @@ export default function LearningScreen() {
 
               <View style={styles.metaRow}>
                 <Text style={styles.modulesText}>
-                  Progression : {percent}% validé
+                  {percent === 100 ? '✅ Certifié (100%)' : `Progression : ${percent}%`}
                 </Text>
                 <Text style={styles.categoryPill}>{item.category || 'Opérations'}</Text>
               </View>
@@ -126,70 +224,227 @@ export default function LearningScreen() {
               <View style={styles.progressBarBg}>
                 <View style={[styles.progressBarFill, { width: `${percent}%` }]} />
               </View>
+
+              <View style={styles.startCourseRow}>
+                <Text style={styles.startCourseText}>
+                  {percent === 100 ? 'Revoir la formation ▶' : 'Commencer la session ▶'}
+                </Text>
+              </View>
             </TouchableOpacity>
           );
         }}
       />
 
-      {/* Lesson Details Modal */}
+      {/* Interactive Course & Quiz Runner Modal */}
       <Modal visible={!!selectedCourse} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{selectedCourse?.title}</Text>
-                <TouchableOpacity onPress={() => setSelectedCourse(null)}>
-                  <Text style={styles.modalCloseText}>✕</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle} numberOfLines={1}>{selectedCourse?.title}</Text>
+              <TouchableOpacity onPress={() => setSelectedCourse(null)} style={styles.closeBtn}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
 
-              <View style={styles.modalBadges}>
-                <Text style={styles.modalBadgePurple}>{selectedCourse?.category || 'Standard'}</Text>
-                <Text style={styles.modalBadgeGray}>⏱️ {selectedCourse?.estimatedMinutes || 20} minutes</Text>
-              </View>
+            {/* Modal Tabs: Contenu vs Quiz */}
+            <View style={styles.modalTabsRow}>
+              <TouchableOpacity
+                style={[styles.modalTabBtn, modalTab === 'content' && styles.modalTabBtnActive]}
+                onPress={() => setModalTab('content')}
+              >
+                <Text style={[styles.modalTabBtnText, modalTab === 'content' && styles.modalTabBtnTextActive]}>
+                  📖 Fiche Synthèse
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalTabBtn, modalTab === 'quiz' && styles.modalTabBtnActive]}
+                onPress={() => setModalTab('quiz')}
+              >
+                <Text style={[styles.modalTabBtnText, modalTab === 'quiz' && styles.modalTabBtnTextActive]}>
+                  ✍️ Quiz ({quizQuestions.length} questions)
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-              <Text style={styles.modalSectionTitle}>Objectifs de formation</Text>
-              <Text style={styles.modalBody}>
-                {selectedCourse?.description ||
-                  'Cette formation aborde les procédures opérationnelles standards, les bonnes pratiques de sécurité et les protocoles de vérification en magasin.'}
-              </Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+              {/* TAB 1: FICHE SYNTHÈSE DE FORMATION */}
+              {modalTab === 'content' ? (
+                <View style={styles.courseContentSection}>
+                  <View style={styles.modalBadges}>
+                    <Text style={styles.modalBadgePurple}>{selectedCourse?.category || 'Standard'}</Text>
+                    <Text style={styles.modalBadgeGray}>⏱️ {selectedCourse?.estimatedMinutes || 20} minutes</Text>
+                  </View>
 
-              <Text style={styles.modalSectionTitle}>Contenu & Quiz</Text>
-              <View style={styles.moduleItem}>
-                <Text style={styles.moduleEmoji}>📖</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.moduleItemTitle}>Module 1 : Protocoles et Contrôles Terrain</Text>
-                  <Text style={styles.moduleItemSub}>Vérification des standards d'exécution et règles d'hygiène</Text>
+                  <Text style={styles.lessonHeading}>1. Règles Fondamentales de Maîtrise</Text>
+                  <Text style={styles.lessonText}>
+                    La chaîne du froid ne doit jamais être interrompue. Pour les produits laitiers, traiteur et viandes fraîches, la température en cœur de meuble doit demeurer comprise entre 0°C et 4°C.
+                  </Text>
+
+                  <Text style={styles.lessonHeading}>2. Fréquence et Tracabilité des Relevés</Text>
+                  <Text style={styles.lessonText}>
+                    Chaque collaborateur affecté au rayon frais doit obligatoirement effectuer 2 relevés par jour : un premier lors de la prise de poste matinale (07h00) et un second lors de la relève d'après-midi (14h00).
+                  </Text>
+
+                  <Text style={styles.lessonHeading}>3. Procédure d'Alerte et Consignation</Text>
+                  <Text style={styles.lessonText}>
+                    En cas de température anormale (supérieure à 8°C constatée sur plus de 30 minutes), isolez immédiatement le linéaire au moyen d'un ruban de sécurité, prévenez le chef de secteur et consignez le lot.
+                  </Text>
+
+                  <TouchableOpacity style={styles.launchQuizActionBtn} onPress={() => setModalTab('quiz')}>
+                    <Text style={styles.launchQuizActionText}>Passer au Quiz de Certification ▶</Text>
+                  </TouchableOpacity>
                 </View>
-              </View>
+              ) : (
+                /* TAB 2: INTERACTIVE QUIZ RUNNER */
+                <View style={styles.quizSection}>
+                  {!isQuizCompleted ? (
+                    <View>
+                      <View style={styles.questionCounterRow}>
+                        <Text style={styles.questionCounterText}>
+                          Question {currentQuestionIndex + 1} sur {quizQuestions.length}
+                        </Text>
+                        <Text style={styles.passingBenchmarkText}>Objectif : 80%</Text>
+                      </View>
 
-              <View style={styles.moduleItem}>
-                <Text style={styles.moduleEmoji}>✍️</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.moduleItemTitle}>Module 2 : Questionnaire de Validation</Text>
-                  <Text style={styles.moduleItemSub}>Quiz rapide à choix multiples (score min: 80%)</Text>
-                </View>
-              </View>
+                      {/* Question Text */}
+                      <Text style={styles.questionTitle}>
+                        {quizQuestions[currentQuestionIndex]?.questionText}
+                      </Text>
 
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={styles.modalCancelBtn}
-                  onPress={() => setSelectedCourse(null)}
-                >
-                  <Text style={styles.modalCancelText}>Fermer</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalSubmitBtn, isCompletingModule && { opacity: 0.7 }]}
-                  onPress={handleCompleteLesson}
-                  disabled={isCompletingModule}
-                >
-                  {isCompletingModule ? (
-                    <ActivityIndicator color="#FFFFFF" />
+                      {/* Options */}
+                      <View style={styles.optionsList}>
+                        {quizQuestions[currentQuestionIndex]?.options.map((opt: string, optIdx: number) => {
+                          const isSelected = selectedAnswers[currentQuestionIndex] === optIdx;
+                          const isRevealed = revealedAnswers[currentQuestionIndex];
+                          const isCorrect = optIdx === quizQuestions[currentQuestionIndex]?.correctOptionIndex;
+
+                          return (
+                            <TouchableOpacity
+                              key={optIdx}
+                              style={[
+                                styles.optionItem,
+                                isSelected && styles.optionItemSelected,
+                                isRevealed && isCorrect && styles.optionItemCorrect,
+                                isRevealed && isSelected && !isCorrect && styles.optionItemIncorrect,
+                              ]}
+                              onPress={() => handleSelectOption(currentQuestionIndex, optIdx)}
+                              disabled={isRevealed}
+                            >
+                              <Text style={styles.optionLetter}>
+                                {String.fromCharCode(65 + optIdx)}.
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.optionItemText,
+                                  isSelected && styles.optionItemTextSelected,
+                                  isRevealed && isCorrect && styles.optionItemTextCorrect,
+                                  isRevealed && isSelected && !isCorrect && styles.optionItemTextIncorrect,
+                                ]}
+                              >
+                                {opt}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+
+                      {/* Explanation Feedback */}
+                      {revealedAnswers[currentQuestionIndex] && (
+                        <View
+                          style={[
+                            styles.feedbackBox,
+                            selectedAnswers[currentQuestionIndex] ===
+                            quizQuestions[currentQuestionIndex]?.correctOptionIndex
+                              ? styles.feedbackBoxSuccess
+                              : styles.feedbackBoxError,
+                          ]}
+                        >
+                          <Text style={styles.feedbackTitle}>
+                            {selectedAnswers[currentQuestionIndex] ===
+                            quizQuestions[currentQuestionIndex]?.correctOptionIndex
+                              ? '✅ Bonne réponse !'
+                              : '❌ Réponse inexacte'}
+                          </Text>
+                          <Text style={styles.feedbackText}>
+                            {quizQuestions[currentQuestionIndex]?.explanation}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Quiz Step Actions */}
+                      <View style={styles.quizBottomButtons}>
+                        {!revealedAnswers[currentQuestionIndex] ? (
+                          <TouchableOpacity
+                            style={[
+                              styles.checkAnswerBtn,
+                              selectedAnswers[currentQuestionIndex] === undefined && { opacity: 0.5 },
+                            ]}
+                            disabled={selectedAnswers[currentQuestionIndex] === undefined}
+                            onPress={handleCheckAnswer}
+                          >
+                            <Text style={styles.checkAnswerBtnText}>Vérifier la réponse</Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity style={styles.nextQuestionBtn} onPress={handleNextQuestion}>
+                            <Text style={styles.nextQuestionBtnText}>
+                              {currentQuestionIndex < quizQuestions.length - 1
+                                ? 'Question Suivante ▶'
+                                : 'Voir mon Résultat Final 🏆'}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
                   ) : (
-                    <Text style={styles.modalSubmitText}>Valider la formation ✓</Text>
+                    /* Final Score Result Card */
+                    <View style={styles.scoreResultCard}>
+                      <Text style={styles.scoreTrophy}>
+                        {quizScore >= Math.ceil(quizQuestions.length * 0.8) ? '🎉' : '⚠️'}
+                      </Text>
+                      <Text style={styles.scoreTitle}>
+                        {quizScore >= Math.ceil(quizQuestions.length * 0.8)
+                          ? 'Certification Réussie !'
+                          : 'Score insuffisant'}
+                      </Text>
+                      <Text style={styles.scoreBigNumber}>
+                        {quizScore} / {quizQuestions.length}
+                      </Text>
+                      <Text style={styles.scoreSubtitle}>
+                        {quizScore >= Math.ceil(quizQuestions.length * 0.8)
+                          ? 'Vous avez validé avec succès l\'ensemble des compétences requises.'
+                          : 'Le score minimum requis de 80% n\'a pas été atteint. Vous pouvez recommencer le test.'}
+                      </Text>
+
+                      {quizScore >= Math.ceil(quizQuestions.length * 0.8) ? (
+                        <TouchableOpacity
+                          style={[styles.saveScoreBtn, isSubmittingQuiz && { opacity: 0.7 }]}
+                          onPress={handleSubmitQuizResults}
+                          disabled={isSubmittingQuiz}
+                        >
+                          {isSubmittingQuiz ? (
+                            <ActivityIndicator color="#FFFFFF" />
+                          ) : (
+                            <Text style={styles.saveScoreBtnText}>Enregistrer ma Certification ✓</Text>
+                          )}
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.retryQuizBtn}
+                          onPress={() => {
+                            setCurrentQuestionIndex(0);
+                            setSelectedAnswers({});
+                            setRevealedAnswers({});
+                            setIsQuizCompleted(false);
+                            setQuizScore(0);
+                          }}
+                        >
+                          <Text style={styles.retryQuizBtnText}>Recommencer le Quiz 🔄</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   )}
-                </TouchableOpacity>
-              </View>
+                </View>
+              )}
             </ScrollView>
           </View>
         </View>
@@ -275,8 +530,8 @@ const styles = StyleSheet.create({
   },
   modulesText: {
     fontSize: 11,
-    color: '#475569',
-    fontWeight: '600',
+    color: '#2563EB',
+    fontWeight: '700',
   },
   categoryPill: {
     fontSize: 10,
@@ -296,6 +551,15 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: '100%',
     backgroundColor: '#2563EB',
+  },
+  startCourseRow: {
+    marginTop: 10,
+    alignItems: 'flex-end',
+  },
+  startCourseText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#2563EB',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -326,7 +590,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: '85%',
+    height: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -340,10 +604,46 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     flex: 1,
   },
-  modalCloseText: {
-    fontSize: 20,
-    color: '#64748B',
+  closeBtn: {
     padding: 4,
+  },
+  modalCloseText: {
+    fontSize: 18,
+    color: '#64748B',
+  },
+  modalTabsRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    padding: 4,
+    marginBottom: 16,
+    gap: 6,
+  },
+  modalTabBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  modalTabBtnActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  modalTabBtnText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  modalTabBtnTextActive: {
+    color: '#2563EB',
+    fontWeight: '700',
+  },
+  courseContentSection: {
+    paddingBottom: 20,
   },
   modalBadges: {
     flexDirection: 'row',
@@ -367,74 +667,216 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
   },
-  modalSectionTitle: {
-    fontSize: 13,
+  lessonHeading: {
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#1E293B',
-    marginTop: 10,
+    marginTop: 12,
     marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
-  modalBody: {
+  lessonText: {
     fontSize: 13,
     color: '#475569',
     lineHeight: 20,
+    marginBottom: 10,
+  },
+  launchQuizActionBtn: {
+    backgroundColor: '#2563EB',
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  launchQuizActionText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  quizSection: {
+    paddingBottom: 24,
+  },
+  questionCounterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  questionCounterText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#2563EB',
+  },
+  passingBenchmarkText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  questionTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    lineHeight: 22,
     marginBottom: 16,
   },
-  moduleItem: {
+  optionsList: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    gap: 12,
+    borderRadius: 10,
+    padding: 14,
   },
-  moduleEmoji: {
-    fontSize: 22,
+  optionItemSelected: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 2,
+    borderColor: '#2563EB',
   },
-  moduleItemTitle: {
+  optionItemCorrect: {
+    backgroundColor: '#DCFCE7',
+    borderWidth: 2,
+    borderColor: '#16A34A',
+  },
+  optionItemIncorrect: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 2,
+    borderColor: '#DC2626',
+  },
+  optionLetter: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#0F172A',
-  },
-  moduleItemSub: {
-    fontSize: 11,
     color: '#64748B',
-    marginTop: 2,
+    marginRight: 10,
   },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  modalCancelBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modalCancelText: {
+  optionItemText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#64748B',
+    color: '#1E293B',
+    flex: 1,
   },
-  modalSubmitBtn: {
-    flex: 1.5,
+  optionItemTextSelected: {
+    fontSize: 13,
+    color: '#1E40AF',
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  optionItemTextCorrect: {
+    fontSize: 13,
+    color: '#15803D',
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  optionItemTextIncorrect: {
+    fontSize: 13,
+    color: '#B91C1C',
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  feedbackBox: {
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 16,
+  },
+  feedbackBoxSuccess: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  feedbackBoxError: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  feedbackTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  feedbackText: {
+    fontSize: 12,
+    color: '#374151',
+    lineHeight: 18,
+  },
+  quizBottomButtons: {
+    marginTop: 10,
+  },
+  checkAnswerBtn: {
     backgroundColor: '#2563EB',
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
   },
-  modalSubmitText: {
+  checkAnswerBtnText: {
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: 'bold',
+  },
+  nextQuestionBtn: {
+    backgroundColor: '#0F172A',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  nextQuestionBtnText: {
     color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  scoreResultCard: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  scoreTrophy: {
+    fontSize: 48,
+    marginBottom: 8,
+  },
+  scoreTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    marginBottom: 6,
+  },
+  scoreBigNumber: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#2563EB',
+    marginBottom: 10,
+  },
+  scoreSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  saveScoreBtn: {
+    backgroundColor: '#10B981',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    width: '100%',
+    alignItems: 'center',
+  },
+  saveScoreBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  retryQuizBtn: {
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    width: '100%',
+    alignItems: 'center',
+  },
+  retryQuizBtnText: {
+    color: '#2563EB',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });

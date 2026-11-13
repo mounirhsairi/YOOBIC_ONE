@@ -5,11 +5,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   SafeAreaView,
   StatusBar,
   RefreshControl,
+  Modal,
+  TextInput,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
@@ -33,14 +35,25 @@ export default function HomeScreen() {
   const [stores, setStores] = useState<any[]>([]);
   const [communities, setCommunities] = useState<any[]>([]);
 
+  // Search Modal
+  const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any>({ tasks: [], stores: [], announcements: [] });
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Notifications Modal
+  const [isNotificationsModalVisible, setIsNotificationsModalVisible] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+
   const loadData = useCallback(async () => {
     try {
-      // 1. Fetch Task Analytics
-      const [analyticsRes, tasksRes, storesRes, commRes] = await Promise.allSettled([
+      const [analyticsRes, tasksRes, storesRes, commRes, notifRes] = await Promise.allSettled([
         mobileApiClient.getTaskAnalytics(),
         mobileApiClient.getTasks(),
         mobileApiClient.getStores(),
         mobileApiClient.listCommunities(),
+        mobileApiClient.listNotifications(),
       ]);
 
       let isAnyOnlineSuccess = false;
@@ -68,12 +81,17 @@ export default function HomeScreen() {
         isAnyOnlineSuccess = true;
       }
 
+      if (notifRes.status === 'fulfilled' && notifRes.value.success && Array.isArray(notifRes.value.data)) {
+        setNotifications(notifRes.value.data);
+        const unread = notifRes.value.data.filter((n: any) => !n.isRead).length;
+        setUnreadNotificationsCount(unread);
+      }
+
       if (!isAnyOnlineSuccess && orgId) {
-        // Fallback to local SQLite cache
         setIsOfflineMode(true);
         const cached = await offlineSyncEngine.getCachedTasks(orgId);
         if (cached && cached.length > 0) {
-          const pending = cached.filter((t) => t.status === 'PENDING').length;
+          const pending = cached.filter((t) => t.status === 'PENDING' || t.status === 'TODO').length;
           const inProgress = cached.filter((t) => t.status === 'IN_PROGRESS').length;
           const submitted = cached.filter((t) => t.status === 'SUBMITTED').length;
           const approved = cached.filter((t) => t.status === 'APPROVED' || t.status === 'COMPLETED').length;
@@ -93,12 +111,6 @@ export default function HomeScreen() {
     } catch (err) {
       console.warn('[HomeScreen] Data loading error, falling back to cache:', err);
       setIsOfflineMode(true);
-      if (orgId) {
-        const cached = await offlineSyncEngine.getCachedTasks(orgId);
-        if (cached) {
-          setAnalytics((prev: any) => ({ ...prev, totalTasks: cached.length }));
-        }
-      }
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -114,7 +126,44 @@ export default function HomeScreen() {
     loadData();
   };
 
-  const todoCount = analytics.byStatus?.PENDING || 0;
+  // Live Global Search Handler
+  const handleSearch = async (text: string) => {
+    setSearchQuery(text);
+    if (!text.trim()) {
+      setSearchResults({ tasks: [], stores: [], announcements: [] });
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const res = await mobileApiClient.globalSearch(text.trim());
+      if (res.success && res.data) {
+        setSearchResults(res.data);
+      }
+    } catch (err) {
+      console.warn('[Search] Global search error:', err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    try {
+      await mobileApiClient.markAllNotificationsAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadNotificationsCount(0);
+      Alert.alert('Notifications', 'Toutes les alertes ont été marquées comme lues.');
+    } catch {}
+  };
+
+  const handleOpenCalendar = () => {
+    Alert.alert(
+      'Planning & Calendrier des Missions 📅',
+      `Aujourd'hui : ${new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}\n\n• 07h00 - 08h00 : Relevé de température frigo\n• 09h00 - 10h00 : Contrôle balisage linéaire\n• 14h00 - 14h30 : Tournée sécurité magasin`
+    );
+  };
+
+  const todoCount = (analytics.byStatus?.PENDING || 0) + (analytics.byStatus?.TODO || 0);
   const startedCount = analytics.byStatus?.IN_PROGRESS || 0;
   const doneCount = (analytics.byStatus?.APPROVED || 0) + (analytics.byStatus?.COMPLETED || 0);
   const toValidateCount = analytics.byStatus?.SUBMITTED || 0;
@@ -139,7 +188,7 @@ export default function HomeScreen() {
             </View>
             <View style={[styles.onlineBadge, isOfflineMode && { backgroundColor: '#F59E0B' }]} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconCircleButton} onPress={() => router.push('/tasks')}>
+          <TouchableOpacity style={styles.iconCircleButton} onPress={() => setIsSearchModalVisible(true)}>
             <Text style={styles.headerIcon}>🔍</Text>
           </TouchableOpacity>
         </View>
@@ -151,10 +200,18 @@ export default function HomeScreen() {
 
         {/* Header Right Actions */}
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerActionBtn} onPress={() => router.push('/community')}>
+          <TouchableOpacity
+            style={styles.headerActionBtn}
+            onPress={() => setIsNotificationsModalVisible(true)}
+          >
             <Text style={styles.headerActionIcon}>🔔</Text>
+            {unreadNotificationsCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>{unreadNotificationsCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerActionBtn} onPress={() => router.push('/tasks')}>
+          <TouchableOpacity style={styles.headerActionBtn} onPress={handleOpenCalendar}>
             <Text style={styles.headerActionIcon}>📅</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerActionBtn} onPress={() => router.push('/community')}>
@@ -195,9 +252,9 @@ export default function HomeScreen() {
             <Text style={styles.donutDateHeader}>{totalTasks} Missions Totales</Text>
             <View style={styles.donutCircle}>
               <View style={styles.donutInner}>
-                <Text style={styles.donutStatGray}>À faire: {todoCount}</Text>
-                <Text style={styles.donutStatYellow}>Démarré: {startedCount}</Text>
-                <Text style={styles.donutStatGreen}>Fait: {doneCount}</Text>
+                <Text style={styles.donutStatGray}>À faire : {todoCount}</Text>
+                <Text style={styles.donutStatYellow}>Démarré : {startedCount}</Text>
+                <Text style={styles.donutStatGreen}>Fait : {doneCount}</Text>
               </View>
             </View>
           </View>
@@ -208,7 +265,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/tasks')}
           >
             <Text style={[styles.redAlertText, overdueCount === 0 && { color: '#16A34A' }]}>
-              {overdueCount > 0 ? `${overdueCount} Missions en retard` : '✅ Aucune mission en retard'}
+              {overdueCount > 0 ? `${overdueCount} Missions en retard` : '✅ Toutes les missions sont à jour'}
             </Text>
           </TouchableOpacity>
 
@@ -223,15 +280,13 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* 2. SITES EN RETARD / STATUT */}
+        {/* 2. STATUT D'EXÉCUTION */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Statut d'exécution</Text>
-            <View style={styles.cardHeaderRight}>
-              <TouchableOpacity onPress={() => router.push('/tasks')}>
-                <Text style={styles.seeAllText}>Tout voir</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity onPress={() => router.push('/tasks')}>
+              <Text style={styles.seeAllText}>Tout voir</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={[styles.overdueBigBox, overdueCount === 0 && { backgroundColor: '#F0FDF4', borderColor: '#DCFCE7' }]}>
@@ -240,7 +295,7 @@ export default function HomeScreen() {
               {overdueCount > 0 ? overdueCount : `${completionPercent}%`}
             </Text>
             <Text style={[styles.overdueLabel, overdueCount === 0 && { color: '#15803D' }]}>
-              {overdueCount > 0 ? 'Missions nécessitant une action immédiate' : 'Taux global de conformité et complétion'}
+              {overdueCount > 0 ? 'Missions nécessitant une action prioritaire' : 'Taux global de conformité et complétion'}
             </Text>
           </View>
         </View>
@@ -254,23 +309,21 @@ export default function HomeScreen() {
                 <Text style={styles.newBadgeText}>Live</Text>
               </View>
             </View>
-            <View style={styles.cardHeaderRight}>
-              <TouchableOpacity onPress={() => router.push('/tasks')}>
-                <Text style={styles.seeAllText}>Détails</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity onPress={() => router.push('/tasks')}>
+              <Text style={styles.seeAllText}>Détails</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.activityTodayRow}>
             <View style={styles.activityPillsCol}>
-              <View style={styles.pillOverdue}>
+              <TouchableOpacity style={styles.pillOverdue} onPress={() => router.push('/tasks')}>
                 <Text style={styles.pillOverdueIcon}>⏰</Text>
                 <Text style={styles.pillOverdueText}>{overdueCount} En retard</Text>
-              </View>
-              <View style={styles.pillTodo}>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.pillTodo} onPress={() => router.push('/tasks')}>
                 <Text style={styles.pillTodoIcon}>☑️</Text>
                 <Text style={styles.pillTodoText}>{todoCount} À faire</Text>
-              </View>
+              </TouchableOpacity>
             </View>
 
             {/* Circular Gauge */}
@@ -287,11 +340,9 @@ export default function HomeScreen() {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Sites & Établissements ({stores.length})</Text>
-            <View style={styles.cardHeaderRight}>
-              <TouchableOpacity onPress={() => router.push('/tasks')}>
-                <Text style={styles.seeAllText}>Voir tous</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity onPress={() => router.push('/tasks')}>
+              <Text style={styles.seeAllText}>Voir tous</Text>
+            </TouchableOpacity>
           </View>
 
           {stores.length === 0 ? (
@@ -345,11 +396,9 @@ export default function HomeScreen() {
         <View style={[styles.card, { marginBottom: 30 }]}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Communautés & Équipes</Text>
-            <View style={styles.cardHeaderRight}>
-              <TouchableOpacity onPress={() => router.push('/community')}>
-                <Text style={styles.seeAllText}>Tout voir</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity onPress={() => router.push('/community')}>
+              <Text style={styles.seeAllText}>Tout voir</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.communityRow}>
@@ -373,6 +422,111 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Interactive Global Search Modal */}
+      <Modal visible={isSearchModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.searchModalContent}>
+            <View style={styles.searchHeader}>
+              <TextInput
+                style={styles.searchModalInput}
+                placeholder="Rechercher missions, magasins, annonces..."
+                placeholderTextColor="#94A3B8"
+                autoFocus
+                value={searchQuery}
+                onChangeText={handleSearch}
+              />
+              <TouchableOpacity onPress={() => setIsSearchModalVisible(false)} style={styles.closeBtn}>
+                <Text style={styles.closeBtnText}>Fermer</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, padding: 16 }}>
+              {isSearching ? (
+                <ActivityIndicator color="#2563EB" style={{ marginTop: 20 }} />
+              ) : searchQuery && searchResults.tasks?.length === 0 && searchResults.stores?.length === 0 ? (
+                <Text style={styles.noResultsText}>Aucun résultat correspondant à votre recherche.</Text>
+              ) : (
+                <View>
+                  {searchResults.tasks?.length > 0 && (
+                    <View style={styles.searchGroup}>
+                      <Text style={styles.searchGroupTitle}>Missions ({searchResults.tasks.length})</Text>
+                      {searchResults.tasks.map((t: any) => (
+                        <TouchableOpacity
+                          key={t.id}
+                          style={styles.searchResultItem}
+                          onPress={() => {
+                            setIsSearchModalVisible(false);
+                            router.push('/tasks');
+                          }}
+                        >
+                          <Text style={styles.searchResultItemTitle}>☑️ {t.title}</Text>
+                          <Text style={styles.searchResultItemSub}>{t.status} • {t.priority}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+
+                  {searchResults.stores?.length > 0 && (
+                    <View style={styles.searchGroup}>
+                      <Text style={styles.searchGroupTitle}>Établissements ({searchResults.stores.length})</Text>
+                      {searchResults.stores.map((s: any) => (
+                        <TouchableOpacity
+                          key={s.id}
+                          style={styles.searchResultItem}
+                          onPress={() => {
+                            setIsSearchModalVisible(false);
+                            router.push('/tasks');
+                          }}
+                        >
+                          <Text style={styles.searchResultItemTitle}>🏢 {s.name}</Text>
+                          <Text style={styles.searchResultItemSub}>{s.code} • {s.city || 'Magasin'}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Interactive Notifications Modal */}
+      <Modal visible={isNotificationsModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.searchModalContent}>
+            <View style={styles.notifHeader}>
+              <Text style={styles.notifTitle}>Notifications & Alertes</Text>
+              <TouchableOpacity onPress={() => setIsNotificationsModalVisible(false)}>
+                <Text style={styles.closeBtnText}>Fermer</Text>
+              </TouchableOpacity>
+            </View>
+
+            {unreadNotificationsCount > 0 && (
+              <TouchableOpacity style={styles.markAllReadBtn} onPress={handleMarkAllNotificationsRead}>
+                <Text style={styles.markAllReadText}>Tout marquer comme lu ✓</Text>
+              </TouchableOpacity>
+            )}
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, padding: 16 }}>
+              {notifications.length === 0 ? (
+                <Text style={styles.noResultsText}>Aucune notification récente.</Text>
+              ) : (
+                notifications.map((n) => (
+                  <View key={n.id} style={[styles.notifItem, !n.isRead && styles.notifItemUnread]}>
+                    <Text style={styles.notifItemTitle}>{n.title}</Text>
+                    <Text style={styles.notifItemMessage}>{n.message}</Text>
+                    <Text style={styles.notifItemDate}>
+                      {new Date(n.createdAt || Date.now()).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -448,9 +602,26 @@ const styles = StyleSheet.create({
   },
   headerActionBtn: {
     padding: 2,
+    position: 'relative',
   },
   headerActionIcon: {
     fontSize: 17,
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notifBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: 'bold',
   },
   offlineBanner: {
     backgroundColor: '#FEF3C7',
@@ -507,11 +678,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
     color: '#1E293B',
-  },
-  cardHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
   },
   seeAllText: {
     fontSize: 12,
@@ -827,5 +993,126 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#334155',
     textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  searchModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '85%',
+  },
+  searchHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 10,
+  },
+  searchModalInput: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: '#0F172A',
+  },
+  closeBtn: {
+    padding: 6,
+  },
+  closeBtnText: {
+    color: '#2563EB',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  noResultsText: {
+    textAlign: 'center',
+    color: '#94A3B8',
+    marginTop: 40,
+    fontSize: 13,
+  },
+  searchGroup: {
+    marginBottom: 20,
+  },
+  searchGroupTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#64748B',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  searchResultItem: {
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  searchResultItemTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  searchResultItemSub: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  notifHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  notifTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  markAllReadBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+  },
+  markAllReadText: {
+    fontSize: 12,
+    color: '#2563EB',
+    fontWeight: '600',
+  },
+  notifItem: {
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  notifItemUnread: {
+    borderColor: '#2563EB',
+    backgroundColor: '#EFF6FF',
+  },
+  notifItemTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  notifItemMessage: {
+    fontSize: 12,
+    color: '#475569',
+    marginBottom: 4,
+  },
+  notifItemDate: {
+    fontSize: 10,
+    color: '#94A3B8',
   },
 });
