@@ -1,0 +1,26 @@
+{
+  "name": "yoobic-one-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Enterprise Frontline Operations SaaS Platform inspired by YOOBIC ONE",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:backend": "npm run --workspace=@yoobic/backend dev",
+    "dev:admin": "npm run --workspace=@yoobic/admin-web dev",
+    "dev:mobile": "npm run --workspace=@yoobic/mobile start",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:check": "node scripts/check-db.js",
+    "db:up": "docker compose up -d mysql redis",
+    "db:down": "docker compose stop mysql redis",
+    "dev:backend:sqlite": "DB_DIALECT=sqlite npm run --workspace=@yoobic/backend dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

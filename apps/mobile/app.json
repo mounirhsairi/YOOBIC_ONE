@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "YOOBIC ONE",
+    "slug": "yoobic-one",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "yoobic",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#2563EB"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yoobic.one"
+    },
+    "android": {
+      "package": "com.yoobic.one",
+      "usesCleartextTraffic": true
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "extra": {
+      "apiUrlHint": "Set EXPO_PUBLIC_API_URL e.g. http://192.168.x.x:4000 for a physical device"
+    }
+  }
+}
