@@ -6,6 +6,7 @@ services:
     plan: free
     region: frankfurt
     buildCommand: npm install --include=dev --legacy-peer-deps && npm run --workspace=@yoobic/shared-types build && npm run --workspace=@yoobic/validation build && npm run --workspace=@yoobic/api-client build && npm run --workspace=@yoobic/backend build
+    preDeployCommand: npm run --workspace=@yoobic/backend db:migrate && npm run --workspace=@yoobic/backend db:seed
     startCommand: npm run --workspace=@yoobic/backend start
     envVars:
       - key: NODE_ENV
