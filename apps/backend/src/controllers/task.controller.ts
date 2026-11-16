@@ -105,7 +105,7 @@ export const createTask = async (req: Request, res: Response): Promise<void> => 
     } as any);
 
     if (task.assignedUserId) {
-      const assignerName = [req.user!.firstName, req.user!.lastName].filter(Boolean).join(' ') || req.user!.email;
+      const assignerName = [(req.user as any)?.firstName, (req.user as any)?.lastName].filter(Boolean).join(' ') || req.user!.email;
       await notifyTaskAssigned({
         assigneeId: task.assignedUserId,
         organizationId: orgId,
@@ -213,7 +213,7 @@ export const submitTask = async (req: Request, res: Response): Promise<void> => 
 
     // Notify task creator / manager that a submission needs review
     if (task.requiresValidation && task.createdById && task.createdById !== req.user!.id) {
-      const submitterName = [req.user!.firstName, req.user!.lastName].filter(Boolean).join(' ') || req.user!.email;
+      const submitterName = [(req.user as any)?.firstName, (req.user as any)?.lastName].filter(Boolean).join(' ') || req.user!.email;
       await notifyTaskSubmitted({
         managerId: task.createdById,
         organizationId: orgId,

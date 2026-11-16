@@ -26,7 +26,7 @@ export interface TaskAttributes {
   formProgress?: any;
   recurrenceRule?: string | null;
   recurrenceParentId?: string | null;
-  isRecurringInstance: boolean;
+  isRecurringInstance?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -50,6 +50,8 @@ export type TaskCreationAttributes = Optional<
   | 'teamId'
   | 'assignedUserId'
   | 'templateId'
+  | 'formTemplateId'
+  | 'formProgress'
   | 'recurrenceRule'
   | 'recurrenceParentId'
   | 'isRecurringInstance'

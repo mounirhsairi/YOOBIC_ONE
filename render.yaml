@@ -1,0 +1,46 @@
+services:
+  # 1. Backend REST API
+  - type: web
+    name: yoobic-backend
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install --include=dev --legacy-peer-deps && npm run --workspace=@yoobic/shared-types build && npm run --workspace=@yoobic/validation build && npm run --workspace=@yoobic/api-client build && npm run --workspace=@yoobic/backend build
+    startCommand: npm run --workspace=@yoobic/backend start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: yoobic-db
+          property: connectionString
+
+  # 2. Frontend Admin Web Portal (Next.js)
+  - type: web
+    name: yoobic-admin-web
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install --include=dev --legacy-peer-deps && npm run --workspace=@yoobic/shared-types build && npm run --workspace=@yoobic/validation build && npm run --workspace=@yoobic/api-client build && npm run --workspace=@yoobic/admin-web build
+    startCommand: npm run --workspace=@yoobic/admin-web start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: NEXT_PUBLIC_API_URL
+        value: https://yoobic-backend.onrender.com
+      - key: BACKEND_URL
+        value: https://yoobic-backend.onrender.com
+
+databases:
+  # 3. Managed PostgreSQL Database
+  - name: yoobic-db
+    plan: free
+    region: frankfurt
+    databaseName: yoobic_db
+    user: yoobic_admin

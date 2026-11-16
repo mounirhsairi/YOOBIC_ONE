@@ -132,6 +132,9 @@ export interface Task {
   storeId?: UUID | null;
   teamId?: UUID | null;
   assignedUserId?: UUID | null;
+  templateId?: UUID | null;
+  formTemplateId?: UUID | null;
+  formProgress?: any;
   createdAt: string;
   updatedAt: string;
 }

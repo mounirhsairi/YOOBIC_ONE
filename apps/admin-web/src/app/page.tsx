@@ -90,6 +90,14 @@ export default function AppRoot() {
     | 'forms'
     | 'locations'
     | 'employees'
+    | 'templates'
+    | 'audits'
+    | 'communication'
+    | 'learning'
+    | 'certificates'
+    | 'analytics'
+    | 'subscription'
+    | 'settings'
     | 'organizations';
 
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
@@ -2772,3 +2780,4 @@ export default function AppRoot() {
     </div>
   );
 }
+

@@ -19,19 +19,50 @@ for (const p of candidates) {
 dotenv.config(); // fallback
 
 const isTest = process.env.NODE_ENV === 'test';
+const databaseUrl = process.env.DATABASE_URL;
 
-// MySQL is the primary dialect.
-// SQLite is used only for tests or when DB_DIALECT=sqlite is set explicitly.
+// Dialect resolution:
+// 1. If DATABASE_URL is set (Render, Neon, Supabase, Cloud DB)
+// 2. Otherwise sqlite or mysql based on DB_DIALECT
 const explicitDialect = (process.env.DB_DIALECT || '').toLowerCase();
-const dbDialect: 'mysql' | 'sqlite' = isTest
+let dbDialect: 'mysql' | 'sqlite' | 'postgres' = isTest
   ? 'sqlite'
-  : explicitDialect === 'sqlite'
-    ? 'sqlite'
-    : 'mysql';
+  : databaseUrl && (databaseUrl.startsWith('postgres://') || databaseUrl.startsWith('postgresql://'))
+    ? 'postgres'
+    : explicitDialect === 'sqlite'
+      ? 'sqlite'
+      : 'mysql';
 
 let sequelizeConfig: Options;
 
-if (dbDialect === 'sqlite') {
+if (databaseUrl) {
+  const isPostgres = databaseUrl.startsWith('postgres://') || databaseUrl.startsWith('postgresql://');
+  dbDialect = isPostgres ? 'postgres' : 'mysql';
+  sequelizeConfig = {
+    dialect: isPostgres ? 'postgres' : 'mysql',
+    logging: process.env.NODE_ENV === 'development' ? console.log : false,
+    dialectOptions: isPostgres
+      ? {
+          ssl: {
+            require: true,
+            rejectUnauthorized: false,
+          },
+        }
+      : {
+          connectTimeout: 15000,
+        },
+    pool: {
+      max: 10,
+      min: 0,
+      acquire: 30000,
+      idle: 10000,
+    },
+    define: {
+      freezeTableName: true,
+    },
+  };
+  console.log(`[Database] Connecting via DATABASE_URL (${dbDialect})`);
+} else if (dbDialect === 'sqlite') {
   const storage = isTest
     ? ':memory:'
     : process.env.SQLITE_STORAGE || path.resolve(process.cwd(), 'dev_database.sqlite');
@@ -73,18 +104,18 @@ if (dbDialect === 'sqlite') {
   console.log(`[Database] Using MySQL → ${username}@${host}:${port}/${database}`);
 }
 
-export const sequelize = new Sequelize(sequelizeConfig);
+export const sequelize = databaseUrl
+  ? new Sequelize(databaseUrl, sequelizeConfig)
+  : new Sequelize(sequelizeConfig);
 
 export const connectDatabase = async () => {
   try {
     await sequelize.authenticate();
     console.log(`[Database] Connection established successfully via ${dbDialect}.`);
 
-    if (process.env.NODE_ENV !== 'production') {
-      // Create missing tables. Does not drop existing data.
-      await sequelize.sync({ alter: true });
-      console.log('[Database] Schema synchronized (alter:true in non-production).');
-    }
+    // Synchronize schema if tables are missing
+    await sequelize.sync({ alter: process.env.NODE_ENV !== 'production' });
+    console.log('[Database] Schema synchronized.');
   } catch (error: any) {
     console.error('');
     console.error('══════════════════════════════════════════════════════════');
@@ -95,13 +126,6 @@ export const connectDatabase = async () => {
       console.error(`  Host    : ${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 3306}`);
       console.error(`  User    : ${process.env.DB_USER || 'yoobic'}`);
       console.error(`  Database: ${process.env.DB_NAME || 'yoobic_one'}`);
-      console.error('');
-      console.error('  → Start MySQL with Docker:');
-      console.error('      docker compose up -d mysql');
-      console.error('  → Wait ~30s for healthcheck, then restart the backend.');
-      console.error('');
-      console.error('  → Or switch temporarily to SQLite for local-only work:');
-      console.error('      DB_DIALECT=sqlite npm run dev:backend');
     }
     console.error('  Error:', error?.message || error);
     console.error('══════════════════════════════════════════════════════════');

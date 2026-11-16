@@ -9,12 +9,12 @@ if (!fs.existsSync(uploadRoot)) {
 }
 
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
+  destination: (_req: any, _file: any, cb: any) => {
     const dir = path.join(uploadRoot, 'evidence');
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
-  filename: (_req, file, cb) => {
+  filename: (_req: any, file: any, cb: any) => {
     const ext = path.extname(file.originalname).toLowerCase() || '.bin';
     cb(null, `${uuidv4()}${ext}`);
   },
@@ -32,7 +32,7 @@ const allowedMime = new Set([
 export const uploadEvidence = multer({
   storage,
   limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB
-  fileFilter: (_req, file, cb) => {
+  fileFilter: (_req: any, file: any, cb: any) => {
     if (allowedMime.has(file.mimetype)) {
       cb(null, true);
     } else {

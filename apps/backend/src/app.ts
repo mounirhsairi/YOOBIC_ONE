@@ -10,12 +10,23 @@ export const createApp = () => {
   const app = express();
 
   // Allowed origins — extend via CORS_ORIGINS env var
-  const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:8081').split(',');
-  app.use(helmet());
+  const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+  app.use(helmet({
+    crossOriginResourcePolicy: false,
+  }));
   app.use(cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile apps, curl, Postman)
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Allow localhost, .onrender.com, .vercel.app, or explicit origins
+      if (
+        !origin ||
+        origin.includes('localhost') ||
+        origin.includes('127.0.0.1') ||
+        origin.endsWith('.onrender.com') ||
+        origin.endsWith('.vercel.app') ||
+        allowedOrigins.includes(origin) ||
+        allowedOrigins.includes('*')
+      ) {
         callback(null, true);
       } else {
         callback(new Error(`CORS: Origin ${origin} not allowed`));
@@ -36,7 +47,7 @@ export const createApp = () => {
   // Rate limiting — auth endpoints
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 20,
+    max: 50,
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, error: { code: 'TOO_MANY_REQUESTS', message: 'Too many attempts, please try again later.' } },
@@ -46,7 +57,7 @@ export const createApp = () => {
   // General API limiter
   const apiLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 300,
+    max: 500,
     standardHeaders: true,
     legacyHeaders: false,
     skip: () => process.env.NODE_ENV === 'test',
