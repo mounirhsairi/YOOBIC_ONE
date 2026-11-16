@@ -113,13 +113,44 @@ export const connectDatabase = async () => {
     await sequelize.authenticate();
     console.log(`[Database] Connection established successfully via ${dbDialect}.`);
 
-    // Synchronize schema if tables are missing
-    await sequelize.sync({ alter: process.env.NODE_ENV !== 'production' });
-    console.log('[Database] Schema synchronized.');
+    // 1. Pre-sync migration: add columns BEFORE sequelize.sync() runs, so indexes/constraints don't fail!
+    try {
+      if (dbDialect === 'postgres') {
+        await sequelize.query(`
+          CREATE TABLE IF NOT EXISTS "form_templates" (
+            "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            "organizationId" UUID NOT NULL,
+            "title" VARCHAR(255) NOT NULL,
+            "description" TEXT,
+            "category" VARCHAR(100) DEFAULT 'OPERATIONS',
+            "pages" JSONB DEFAULT '[]'::jsonb,
+            "estimatedDurationMinutes" INTEGER,
+            "isActive" BOOLEAN DEFAULT true,
+            "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+          );
+        `);
+        await sequelize.query('ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "formTemplateId" UUID;');
+        await sequelize.query('ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "formProgress" JSONB;');
+        await sequelize.query('ALTER TABLE "form_templates" ADD COLUMN IF NOT EXISTS "pages" JSONB DEFAULT \'[]\'::jsonb;');
+        await sequelize.query('ALTER TABLE "form_templates" ADD COLUMN IF NOT EXISTS "estimatedDurationMinutes" INTEGER;');
+        await sequelize.query('CREATE INDEX IF NOT EXISTS "tasks_form_template_id" ON "tasks" ("formTemplateId");');
+        console.log('[Database] PostgreSQL pre-sync schema verified.');
+      } else if (dbDialect === 'sqlite') {
+        try {
+          await sequelize.query('ALTER TABLE tasks ADD COLUMN formTemplateId TEXT;');
+        } catch {}
+        try {
+          await sequelize.query('ALTER TABLE tasks ADD COLUMN formProgress TEXT;');
+        } catch {}
+      }
+    } catch (migErr: any) {
+      console.warn('[Database] Pre-sync schema check notice:', migErr.message);
+    }
 
-    // Run custom schema migrations to ensure new columns and relations exist
-    const { runSchemaMigrations } = await import('./run-migrate');
-    await runSchemaMigrations();
+    // 2. Synchronize schema if tables are missing
+    await sequelize.sync({ alter: false });
+    console.log('[Database] Schema synchronized.');
   } catch (error: any) {
     console.error('');
     console.error('══════════════════════════════════════════════════════════');

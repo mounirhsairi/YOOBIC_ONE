@@ -214,8 +214,7 @@ Task.init(
       { fields: ['storeId'] },
       { fields: ['teamId'] },
       { fields: ['dueDate'] },
-      { fields: ['formTemplateId'] },
-    ],
+          ],
   }
 );
 
