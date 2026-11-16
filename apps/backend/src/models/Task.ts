@@ -49,6 +49,10 @@ export type TaskCreationAttributes = Optional<
   | 'storeId'
   | 'teamId'
   | 'assignedUserId'
+  | 'templateId'
+  | 'recurrenceRule'
+  | 'recurrenceParentId'
+  | 'isRecurringInstance'
   | 'createdAt'
   | 'updatedAt'
 >;
@@ -203,3 +207,4 @@ Task.init(
     ],
   }
 );
+
