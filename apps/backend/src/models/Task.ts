@@ -182,6 +182,14 @@ Task.init(
       type: DataTypes.UUID,
       allowNull: true,
     },
+    formTemplateId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
+    formProgress: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
     recurrenceRule: {
       type: DataTypes.STRING(50),
       allowNull: true,
@@ -206,6 +214,7 @@ Task.init(
       { fields: ['storeId'] },
       { fields: ['teamId'] },
       { fields: ['dueDate'] },
+      { fields: ['formTemplateId'] },
     ],
   }
 );

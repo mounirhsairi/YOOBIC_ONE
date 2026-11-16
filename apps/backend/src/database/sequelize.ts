@@ -116,6 +116,10 @@ export const connectDatabase = async () => {
     // Synchronize schema if tables are missing
     await sequelize.sync({ alter: process.env.NODE_ENV !== 'production' });
     console.log('[Database] Schema synchronized.');
+
+    // Run custom schema migrations to ensure new columns and relations exist
+    const { runSchemaMigrations } = await import('./run-migrate');
+    await runSchemaMigrations();
   } catch (error: any) {
     console.error('');
     console.error('══════════════════════════════════════════════════════════');
