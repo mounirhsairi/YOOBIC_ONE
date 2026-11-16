@@ -99,6 +99,19 @@ router.get('/audits/:id', authenticateToken, requireTenant, auditController.getA
 router.post('/audits/:id/submit', authenticateToken, requireTenant, auditController.submitAudit);
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Dynamic Mission Forms & Missions
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/forms', authenticateToken, requireTenant, formController.listForms);
+router.get('/forms/:id', authenticateToken, requireTenant, formController.getForm);
+router.post('/forms', authenticateToken, requireTenant, requirePermission('tasks.manage'), formController.createForm);
+router.patch('/forms/:id', authenticateToken, requireTenant, requirePermission('tasks.manage'), formController.updateForm);
+router.delete('/forms/:id', authenticateToken, requireTenant, requirePermission('tasks.manage'), formController.deleteForm);
+router.get('/missions/:taskId', authenticateToken, requireTenant, formController.getMission);
+router.post('/missions/:taskId/start', authenticateToken, requireTenant, formController.startMission);
+router.post('/missions/:taskId/abandon', authenticateToken, requireTenant, formController.abandonMission);
+router.patch('/missions/:taskId/progress', authenticateToken, requireTenant, formController.saveMissionProgress);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Internal Communication & Communities
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/announcements', authenticateToken, requireTenant, commController.listAnnouncements);
@@ -170,14 +183,3 @@ router.patch('/admin/organizations/:id/suspend', authenticateToken, requireSuper
 router.patch('/admin/organizations/:id/activate', authenticateToken, requireSuperAdmin, orgController.activateOrganization);
 
 export default router;
-
-// ── Dynamic mission forms ──
-router.get('/forms', authenticateToken, requireTenant, formController.listForms);
-router.get('/forms/:id', authenticateToken, requireTenant, formController.getForm);
-router.post('/forms', authenticateToken, requireTenant, requirePermission('tasks.manage'), formController.createForm);
-router.patch('/forms/:id', authenticateToken, requireTenant, requirePermission('tasks.manage'), formController.updateForm);
-router.delete('/forms/:id', authenticateToken, requireTenant, requirePermission('tasks.manage'), formController.deleteForm);
-router.get('/missions/:taskId', authenticateToken, requireTenant, formController.getMission);
-router.post('/missions/:taskId/start', authenticateToken, requireTenant, formController.startMission);
-router.post('/missions/:taskId/abandon', authenticateToken, requireTenant, formController.abandonMission);
-router.patch('/missions/:taskId/progress', authenticateToken, requireTenant, formController.saveMissionProgress);

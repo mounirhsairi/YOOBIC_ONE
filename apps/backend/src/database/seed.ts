@@ -1,4 +1,4 @@
-import bcrypt from 'bcryptjs';
+﻿import bcrypt from 'bcryptjs';
 import {
   User,
   Organization,
@@ -801,6 +801,122 @@ export const seedDatabase = async () => {
       isActive: true,
       createdById: manager.id,
     });
+
+    // 11. Demo Form Templates (RDTS missions)
+    const ftModelAPages = [
+      {
+        id: 'p1', title: 'Des photos',
+        fields: [
+          { id: 'a1_before', type: 'photo', label: 'Avant les photos', max: 5, required: false },
+          { id: 'a1_after', type: 'photo', label: 'Apres les photos', max: 5, required: false },
+          { id: 'a1_present', type: 'yes_no', label: 'Vous etes-vous presente a la personne responsable ?', required: true },
+        ],
+      },
+      {
+        id: 'p2', title: '1/4 Feutres de melange de palettes',
+        fields: [
+          { id: 'a2_img', type: 'image', label: 'Image de la palette', url: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800' },
+          { id: 'a2_palette', type: 'select', label: 'Palette installee a proximite des caisses ?', options: ['Oui', 'Non, condense a la baie'], required: true },
+        ],
+      },
+      {
+        id: 'p3', title: 'Boites Madico',
+        fields: [
+          { id: 'a3_plastic_img', type: 'image', label: 'Informations sur les boites en plastique', url: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=800' },
+          { id: 'a3_open', type: 'yes_no', label: 'Y a-t-il des boites en plastique ouvertes sur les crochets ?', required: true },
+          { id: 'a3_damaged', type: 'yes_no', label: 'Y a-t-il des presentoirs metalliques endommages ou manquants ?', required: true },
+        ],
+      },
+      {
+        id: 'p4', title: 'Probleme',
+        fields: [
+          { id: 'a4_problem', type: 'yes_no', label: 'Y a-t-il une situation problematique?', required: true },
+          { id: 'a4_time', type: 'number', label: 'Combien de temps avez-vous consacre a cette tache ? (en minutes)', required: true },
+          { id: 'a4_comments', type: 'textarea', label: 'Commentaires/problemes (Optionnel)', required: false },
+        ],
+      },
+    ];
+
+    const ftModelBPages = [
+      {
+        id: 'b1', title: 'Baies',
+        fields: [
+          { id: 'b1_name', type: 'text', label: 'Quel est le nom du gestionnaire rencontre dans le service ?', required: true },
+          { id: 'b1_photos', type: 'photo', label: 'Photos des sections avant', max: 10, required: false },
+          { id: 'b1_backroom', type: 'yes_no', label: 'Avez-vous verifie dans l arriere-boutique ?', required: true },
+          { id: 'b1_filled', type: 'yes_no', label: 'Avez-vous rempli la baie ?', required: true },
+          { id: 'b1_brochures', type: 'yes_no', label: 'Manque-t-il des brochures ou un support ?', required: true },
+        ],
+      },
+      {
+        id: 'b2', title: 'PK',
+        fields: [
+          { id: 'b2_doc_fr', type: 'document', label: 'Doc FR', fileName: 'VarathaneWATCO-FR-oct 2023-RDTS.pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+          { id: 'b2_provided', type: 'yes_no', label: 'Avez-vous fourni du PK ?', required: true },
+        ],
+      },
+      {
+        id: 'b3', title: 'Situation problematique',
+        fields: [
+          { id: 'b3_problem', type: 'yes_no', label: 'Situation problematique', required: true },
+          { id: 'b3_time', type: 'number', label: 'Temps passe dans le magasin (en minute)', required: true },
+        ],
+      },
+    ];
+
+    const formA = await FormTemplate.create({
+      organizationId: org.id,
+      title: 'RDTS - Maintenance - Walmart - Philips',
+      description: 'RDTS - Entretien - Walmart - Philips',
+      category: 'Regular Maintenance',
+      pages: ftModelAPages,
+      estimatedDurationMinutes: 60,
+      isActive: true,
+    });
+    console.log('[Seed] Form model A (Walmart Philips) created');
+
+    const formB = await FormTemplate.create({
+      organizationId: org.id,
+      title: 'RDTS - Visite magasin - Baies PK',
+      description: 'Visite terrain : baies, PK, sections Gator et situation problematique',
+      category: 'Regular Maintenance',
+      pages: ftModelBPages,
+      estimatedDurationMinutes: 90,
+      isActive: true,
+    });
+    console.log('[Seed] Form model B (Baies PK) created');
+
+    await Task.create({
+      organizationId: org.id,
+      title: 'RDTS - Maintenance - Walmart - Philips',
+      description: 'RDTS - Entretien - Walmart - Philips',
+      category: 'Regular Maintenance',
+      priority: 'HIGH',
+      status: 'TODO',
+      requiresValidation: true,
+      estimatedDurationMinutes: 60,
+      assignedUserId: employee.id,
+      createdById: employee.id,
+      storeId: store1.id,
+      formTemplateId: formA.id,
+      checklist: [],
+    } as any);
+
+    await Task.create({
+      organizationId: org.id,
+      title: 'RDTS - Visite magasin - Baies PK',
+      description: 'Visite terrain Baies, PK et sections produit',
+      category: 'Regular Maintenance',
+      priority: 'HIGH',
+      status: 'TODO',
+      requiresValidation: true,
+      estimatedDurationMinutes: 90,
+      assignedUserId: employee.id,
+      createdById: employee.id,
+      storeId: store1.id,
+      formTemplateId: formB.id,
+      checklist: [],
+    } as any);
 
     console.log('[Seed] Demonstration data successfully loaded into database.');
   } catch (error) {
