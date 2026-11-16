@@ -22,6 +22,8 @@ export interface TaskAttributes {
   teamId?: string | null;
   assignedUserId?: string | null;
   templateId?: string | null;
+  formTemplateId?: string | null;
+  formProgress?: any;
   recurrenceRule?: string | null;
   recurrenceParentId?: string | null;
   isRecurringInstance: boolean;
@@ -72,6 +74,8 @@ export class Task extends Model<TaskAttributes, TaskCreationAttributes> implemen
   declare teamId: string | null;
   declare assignedUserId: string | null;
   declare templateId: string | null;
+  declare formTemplateId: string | null;
+  declare formProgress: any;
   declare recurrenceRule: string | null;
   declare recurrenceParentId: string | null;
   declare isRecurringInstance: boolean;

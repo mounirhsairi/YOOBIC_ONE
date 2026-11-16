@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -14,12 +15,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
+// router for mission detail
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../src/context/AuthContext';
 import { mobileApiClient } from '../../src/services/api';
 import { offlineSyncEngine } from '../../src/services/offlineSync';
 
 export default function TasksScreen() {
+  const router = useRouter();
   const { user, orgId } = useAuth();
 
   // Navigation states: 'sites_list' | 'site_profile' | 'mission_detail'
@@ -954,7 +957,7 @@ export default function TasksScreen() {
               <TouchableOpacity
                 key={task.id}
                 style={styles.taskCardItem}
-                onPress={() => handleSelectTask(task)}
+                onPress={() => router.push(`/mission/${task.id}` as any)}
               >
                 <View style={styles.taskCardHeader}>
                   <View style={styles.taskIconBubble}>

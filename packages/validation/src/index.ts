@@ -106,6 +106,7 @@ export const createTaskSchema = z.object({
   storeId: z.string().uuid().optional().nullable(),
   teamId: z.string().uuid().optional().nullable(),
   assignedUserId: z.string().uuid().optional().nullable(),
+  formTemplateId: z.string().uuid().optional().nullable(),
 });
 
 export const submitTaskSchema = z.object({

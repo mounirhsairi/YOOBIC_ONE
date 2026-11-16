@@ -1,14 +1,37 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../database/sequelize';
 
+/**
+ * FormTemplate.pages structure (JSON):
+ * [
+ *   {
+ *     id: string,
+ *     title: string,
+ *     fields: [
+ *       {
+ *         id: string,
+ *         type: 'text'|'number'|'textarea'|'yes_no'|'select'|'photo'|'instruction'|'image'|'document'|'info',
+ *         label: string,
+ *         required?: boolean,
+ *         max?: number,          // photo max count
+ *         options?: string[],    // select / custom yes_no
+ *         url?: string,          // image / document
+ *         content?: string,      // instruction / info body
+ *         fileName?: string,
+ *         fileSize?: string
+ *       }
+ *     ]
+ *   }
+ * ]
+ */
 export interface FormTemplateAttributes {
   id: string;
   organizationId: string;
   title: string;
   description?: string | null;
   category: string;
-  sections: any[];
-  passingScorePercentage: number;
+  pages: any[];
+  estimatedDurationMinutes?: number | null;
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -16,7 +39,7 @@ export interface FormTemplateAttributes {
 
 export type FormTemplateCreationAttributes = Optional<
   FormTemplateAttributes,
-  'id' | 'description' | 'category' | 'passingScorePercentage' | 'isActive' | 'createdAt' | 'updatedAt'
+  'id' | 'description' | 'category' | 'pages' | 'estimatedDurationMinutes' | 'isActive' | 'createdAt' | 'updatedAt'
 >;
 
 export class FormTemplate
@@ -28,8 +51,8 @@ export class FormTemplate
   declare title: string;
   declare description: string | null;
   declare category: string;
-  declare sections: any[];
-  declare passingScorePercentage: number;
+  declare pages: any[];
+  declare estimatedDurationMinutes: number | null;
   declare isActive: boolean;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
@@ -58,13 +81,13 @@ FormTemplate.init(
       type: DataTypes.STRING(100),
       defaultValue: 'OPERATIONS',
     },
-    sections: {
+    pages: {
       type: DataTypes.JSON,
       defaultValue: [],
     },
-    passingScorePercentage: {
-      type: DataTypes.FLOAT,
-      defaultValue: 80,
+    estimatedDurationMinutes: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
     isActive: {
       type: DataTypes.BOOLEAN,
@@ -75,6 +98,6 @@ FormTemplate.init(
     sequelize,
     tableName: 'form_templates',
     timestamps: true,
-    indexes: [{ fields: ['organizationId'] }],
+    indexes: [{ fields: ['organizationId'] }, { fields: ['organizationId', 'isActive'] }],
   }
 );

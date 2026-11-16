@@ -633,6 +633,38 @@ export class YoobicApiClient {
       body: form,
     });
   }
+  // ── Forms & Missions ──
+  async getForms() {
+    return this.request<any[]>('/api/v1/forms');
+  }
+  async getForm(id: string) {
+    return this.request<any>(`/api/v1/forms/${id}`);
+  }
+  async createForm(payload: any) {
+    return this.request<any>('/api/v1/forms', { method: 'POST', body: JSON.stringify(payload) });
+  }
+  async updateForm(id: string, payload: any) {
+    return this.request<any>(`/api/v1/forms/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+  }
+  async deleteForm(id: string) {
+    return this.request<any>(`/api/v1/forms/${id}`, { method: 'DELETE' });
+  }
+  async getMission(taskId: string) {
+    return this.request<any>(`/api/v1/missions/${taskId}`);
+  }
+  async startMission(taskId: string) {
+    return this.request<any>(`/api/v1/missions/${taskId}/start`, { method: 'POST', body: '{}' });
+  }
+  async abandonMission(taskId: string) {
+    return this.request<any>(`/api/v1/missions/${taskId}/abandon`, { method: 'POST', body: '{}' });
+  }
+  async saveMissionProgress(taskId: string, payload: any) {
+    return this.request<any>(`/api/v1/missions/${taskId}/progress`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
 }
 
 

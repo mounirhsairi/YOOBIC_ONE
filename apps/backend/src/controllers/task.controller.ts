@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Task, TaskSubmission, TaskEvidence, TaskValidation, User, Store, Team } from '../models';
+import { Task, TaskSubmission, TaskEvidence, TaskValidation, User, Store, Team, FormTemplate } from '../models';
 import { createTaskSchema, submitTaskSchema, validateTaskSchema } from '@yoobic/validation';
 import { notifyTaskAssigned, notifyTaskSubmitted, notifyTaskValidated } from '../services/notification.service';
 
@@ -30,6 +30,7 @@ export const listTasks = async (req: Request, res: Response): Promise<void> => {
         { model: User, as: 'assignee', attributes: ['id', 'email', 'firstName', 'lastName'] },
         { model: Store, as: 'store', attributes: ['id', 'name', 'code'] },
         { model: Team, as: 'team', attributes: ['id', 'name'] },
+        { model: FormTemplate, as: 'formTemplate', attributes: ['id', 'title', 'category', 'estimatedDurationMinutes'] },
         {
           model: TaskSubmission,
           as: 'submissions',

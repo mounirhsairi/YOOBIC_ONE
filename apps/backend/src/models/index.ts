@@ -174,6 +174,9 @@ TaskTemplate.belongsTo(User, { foreignKey: 'createdById', as: 'creator' });
 Task.belongsTo(TaskTemplate, { foreignKey: 'templateId', as: 'template' });
 TaskTemplate.hasMany(Task, { foreignKey: 'templateId', as: 'instances' });
 
+Task.belongsTo(FormTemplate, { foreignKey: 'formTemplateId', as: 'formTemplate' });
+FormTemplate.hasMany(Task, { foreignKey: 'formTemplateId', as: 'tasks' });
+
 Organization.hasMany(Certificate, { foreignKey: 'organizationId', as: 'certificates' });
 Certificate.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization' });
 User.hasMany(Certificate, { foreignKey: 'userId', as: 'certificates' });

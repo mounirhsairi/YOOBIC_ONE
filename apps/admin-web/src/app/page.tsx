@@ -87,6 +87,7 @@ export default function AppRoot() {
   type NavTab =
     | 'dashboard'
     | 'tasks'
+    | 'forms'
     | 'locations'
     | 'employees'
     | 'organizations';
@@ -158,6 +159,17 @@ export default function AppRoot() {
   const [newTaskPriority, setNewTaskPriority] = useState('MEDIUM');
   const [newTaskStoreId, setNewTaskStoreId] = useState('');
   const [newTaskAssigneeId, setNewTaskAssigneeId] = useState('');
+  const [newTaskFormId, setNewTaskFormId] = useState('');
+  const [forms, setForms] = useState<any[]>([]);
+  const [formBuilderOpen, setFormBuilderOpen] = useState(false);
+  const [editingFormId, setEditingFormId] = useState<string | null>(null);
+  const [fbTitle, setFbTitle] = useState('');
+  const [fbCategory, setFbCategory] = useState('Regular Maintenance');
+  const [fbDescription, setFbDescription] = useState('');
+  const [fbDuration, setFbDuration] = useState(60);
+  const [fbPages, setFbPages] = useState<any[]>([{ id: 'p1', title: 'Page 1', fields: [] }]);
+  const [fbActivePage, setFbActivePage] = useState(0);
+  const [fbSaving, setFbSaving] = useState(false);
   const [newTaskCategory, setNewTaskCategory] = useState('Operations');
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
   const [newTaskDuration, setNewTaskDuration] = useState('30');
@@ -257,7 +269,7 @@ export default function AppRoot() {
     setDataError(null);
 
     try {
-      const [
+      const [formsRes, 
         tasksRes,
         analyticsRes,
         storesRes,
@@ -271,6 +283,7 @@ export default function AppRoot() {
         employeesRes,
         rolesRes,
       ] = await Promise.all([
+        apiClient.getForms(),
         apiClient.getTasks(),
         apiClient.getTaskAnalytics(),
         apiClient.getStores(),
@@ -285,7 +298,8 @@ export default function AppRoot() {
         apiClient.listRoles(),
       ]);
 
-      if (tasksRes.success) setTasks(tasksRes.data || []);
+      if (formsRes?.success) setForms(formsRes.data || []);
+        if (tasksRes.success) setTasks(tasksRes.data || []);
       if (analyticsRes.success) setTaskAnalytics(analyticsRes.data || {});
       if (storesRes.success) setStores(storesRes.data || []);
       if (auditsRes.success) setAudits(auditsRes.data || []);
@@ -427,6 +441,121 @@ export default function AppRoot() {
     }
   };
 
+  
+  const openNewFormBuilder = () => {
+    setEditingFormId(null);
+    setFbTitle('');
+    setFbCategory('Regular Maintenance');
+    setFbDescription('');
+    setFbDuration(60);
+    setFbPages([{ id: `p_${Date.now()}`, title: 'Page 1', fields: [] }]);
+    setFbActivePage(0);
+    setFormBuilderOpen(true);
+  };
+
+  const openEditForm = (form: any) => {
+    setEditingFormId(form.id);
+    setFbTitle(form.title || '');
+    setFbCategory(form.category || 'Regular Maintenance');
+    setFbDescription(form.description || '');
+    setFbDuration(form.estimatedDurationMinutes || 60);
+    setFbPages(form.pages?.length ? JSON.parse(JSON.stringify(form.pages)) : [{ id: `p_${Date.now()}`, title: 'Page 1', fields: [] }]);
+    setFbActivePage(0);
+    setFormBuilderOpen(true);
+  };
+
+  const saveFormBuilder = async () => {
+    if (!fbTitle.trim()) {
+      alert('Titre du formulaire requis');
+      return;
+    }
+    setFbSaving(true);
+    try {
+      const payload = {
+        title: fbTitle.trim(),
+        description: fbDescription || null,
+        category: fbCategory,
+        estimatedDurationMinutes: fbDuration,
+        pages: fbPages,
+        isActive: true,
+      };
+      let res;
+      if (editingFormId) {
+        res = await apiClient.updateForm(editingFormId, payload);
+      } else {
+        res = await apiClient.createForm(payload);
+      }
+      if (res.success) {
+        const list = await apiClient.getForms();
+        if (list.success) setForms(list.data || []);
+        setFormBuilderOpen(false);
+      } else {
+        alert(res.error?.message || 'Erreur enregistrement formulaire');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Erreur réseau');
+    } finally {
+      setFbSaving(false);
+    }
+  };
+
+  const deleteFormModel = async (id: string) => {
+    if (!confirm('Supprimer ce modèle de formulaire ?')) return;
+    const res = await apiClient.deleteForm(id);
+    if (res.success) {
+      setForms((prev) => prev.filter((f) => f.id !== id));
+    }
+  };
+
+  const addFbPage = () => {
+    const id = `p_${Date.now()}`;
+    setFbPages((prev) => [...prev, { id, title: `Page ${prev.length + 1}`, fields: [] }]);
+    setFbActivePage(fbPages.length);
+  };
+
+  const addFbField = (type: string) => {
+    const id = `f_${Date.now()}`;
+    const defaults: any = {
+      id,
+      type,
+      label: type === 'yes_no' ? 'Question Oui/Non' : type === 'photo' ? 'Photos' : type === 'info' ? 'Information' : 'Nouveau champ',
+      required: false,
+    };
+    if (type === 'photo') defaults.max = 5;
+    if (type === 'yes_no') defaults.options = ['Oui', 'Non'];
+    if (type === 'select') defaults.options = ['Option 1', 'Option 2'];
+    if (type === 'image') defaults.url = '';
+    if (type === 'document') { defaults.fileName = 'document.pdf'; defaults.url = ''; defaults.fileSize = ''; }
+    if (type === 'info' || type === 'instruction') defaults.content = '';
+    setFbPages((prev) => {
+      const pages = [...prev];
+      const page = { ...pages[fbActivePage], fields: [...(pages[fbActivePage].fields || []), defaults] };
+      pages[fbActivePage] = page;
+      return pages;
+    });
+  };
+
+  const updateFbField = (fieldIdx: number, key: string, value: any) => {
+    setFbPages((prev) => {
+      const pages = [...prev];
+      const fields = [...(pages[fbActivePage].fields || [])];
+      fields[fieldIdx] = { ...fields[fieldIdx], [key]: value };
+      pages[fbActivePage] = { ...pages[fbActivePage], fields };
+      return pages;
+    });
+  };
+
+  const removeFbField = (fieldIdx: number) => {
+    setFbPages((prev) => {
+      const pages = [...prev];
+      const fields = [...(pages[fbActivePage].fields || [])];
+      fields.splice(fieldIdx, 1);
+      pages[fbActivePage] = { ...pages[fbActivePage], fields };
+      return pages;
+    });
+  };
+
+
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
@@ -451,6 +580,7 @@ export default function AppRoot() {
         category: newTaskCategory,
         storeId: newTaskStoreId || (stores[0]?.id ?? null),
         assignedUserId: newTaskAssigneeId || null,
+        formTemplateId: newTaskFormId || null,
         dueDate: newTaskDueDate ? new Date(newTaskDueDate).toISOString() : undefined,
         estimatedDurationMinutes: newTaskDuration ? parseInt(newTaskDuration, 10) : undefined,
         requiresPhotoEvidence: newTaskRequiresPhoto,
@@ -1041,6 +1171,7 @@ export default function AppRoot() {
 {[
               { id: 'dashboard', label: "Vue d'ensemble", icon: BarChart3 },
               { id: 'tasks', label: 'Missions & Tâches', icon: CheckSquare, badge: tasks.filter(t => ['SUBMITTED', 'TODO', 'IN_PROGRESS'].includes(t.status)).length },
+              { id: 'forms', label: 'Modèles de formulaires', icon: FileText, count: forms.length },
               { id: 'locations', label: 'Sites & Magasins', icon: MapPin, count: stores.length },
               { id: 'employees', label: 'Équipe & Utilisateurs', icon: Users, count: employees.length },
               ...(currentUser?.isSuperAdmin
@@ -1112,6 +1243,7 @@ export default function AppRoot() {
             <h2 className="text-base font-bold text-slate-900 capitalize">
               {activeTab === 'dashboard' && "Vue d'ensemble Opérationnelle"}
               {activeTab === 'tasks' && 'Missions & Tâches Terrain'}
+              {activeTab === 'forms' && 'Modèles de formulaires missions'}
               {activeTab === 'templates' && 'Modèles de missions & récurrence'}
               {activeTab === 'locations' && 'Réseau de Magasins & Établissements'}
               {activeTab === 'audits' && 'Audits, Inspections & Visites'}
@@ -1445,6 +1577,227 @@ export default function AppRoot() {
               )}
             </div>
           )}
+
+
+          {/* ─────────────────────────────────────────────────────────────────
+              TAB: FORM MODELS (mission formulaires multi-pages)
+          ────────────────────────────────────────────────────────────────── */}
+          {activeTab === 'forms' && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Modèles de formulaires</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Chaque modèle définit les pages et questions que l&apos;opérateur parcourt sur mobile (détail → synthèse → pages).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={openNewFormBuilder}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-sm"
+                >
+                  + Nouveau modèle
+                </button>
+              </div>
+
+              {!formBuilderOpen && (
+                <div className="grid md:grid-cols-2 gap-4">
+                  {forms.length === 0 && (
+                    <div className="col-span-2 bg-white border border-dashed border-slate-200 rounded-2xl p-10 text-center text-sm text-slate-500">
+                      Aucun modèle. Créez-en un ou redémarrez le backend pour charger les démos RDTS.
+                    </div>
+                  )}
+                  {forms.map((form: any) => {
+                    const pages = form.pages || [];
+                    const fieldCount = pages.reduce((n: number, p: any) => n + (p.fields?.length || 0), 0);
+                    return (
+                      <div key={form.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-3">
+                        <div className="flex justify-between gap-2">
+                          <div>
+                            <h3 className="font-bold text-slate-900 text-sm">{form.title}</h3>
+                            <p className="text-xs text-slate-500 mt-1 line-clamp-2">{form.description || '—'}</p>
+                          </div>
+                          <span className="shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-violet-50 text-violet-700">
+                            {form.category || 'OPS'}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-[10px] font-semibold text-slate-600">
+                          <span className="px-2 py-0.5 rounded bg-slate-100">{pages.length} pages</span>
+                          <span className="px-2 py-0.5 rounded bg-slate-100">{fieldCount} champs</span>
+                          <span className="px-2 py-0.5 rounded bg-slate-100">{form.estimatedDurationMinutes || '—'} min</span>
+                        </div>
+                        <ol className="text-[11px] text-slate-500 space-y-1 list-decimal list-inside">
+                          {pages.slice(0, 6).map((pg: any) => (
+                            <li key={pg.id}>{pg.title}</li>
+                          ))}
+                          {pages.length > 6 && <li>… +{pages.length - 6} pages</li>}
+                        </ol>
+                        <div className="flex gap-2 pt-1">
+                          <button type="button" onClick={() => openEditForm(form)} className="flex-1 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold">
+                            Modifier
+                          </button>
+                          <button type="button" onClick={() => deleteFormModel(form.id)} className="px-3 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-bold">
+                            Suppr.
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {formBuilderOpen && (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="p-4 border-b border-slate-100 flex flex-wrap gap-3 items-end bg-slate-50">
+                    <div className="flex-1 min-w-[160px]">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Titre</label>
+                      <input value={fbTitle} onChange={(e) => setFbTitle(e.target.value)} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-xl text-sm" placeholder="Ex: RDTS - Maintenance - Walmart" />
+                    </div>
+                    <div className="w-40">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Catégorie</label>
+                      <input value={fbCategory} onChange={(e) => setFbCategory(e.target.value)} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-xl text-sm" />
+                    </div>
+                    <div className="w-28">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Durée (min)</label>
+                      <input type="number" value={fbDuration} onChange={(e) => setFbDuration(Number(e.target.value) || 0)} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-xl text-sm" />
+                    </div>
+                    <button type="button" onClick={() => setFormBuilderOpen(false)} className="px-3 py-2 text-xs font-bold text-slate-600">Annuler</button>
+                    <button type="button" disabled={fbSaving} onClick={saveFormBuilder} className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl disabled:opacity-50">
+                      {fbSaving ? '…' : 'Enregistrer'}
+                    </button>
+                  </div>
+                  <div className="p-4 border-b border-slate-100">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Description</label>
+                    <textarea value={fbDescription} onChange={(e) => setFbDescription(e.target.value)} rows={2} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-xl text-sm" />
+                  </div>
+
+                  <div className="flex min-h-[420px]">
+                    {/* Pages list */}
+                    <div className="w-48 border-r border-slate-100 p-3 space-y-2 bg-slate-50/50">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Pages / Synthèse</p>
+                      {fbPages.map((pg: any, i: number) => (
+                        <button
+                          key={pg.id}
+                          type="button"
+                          onClick={() => setFbActivePage(i)}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold ${i === fbActivePage ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-700'}`}
+                        >
+                          {i + 1}. {pg.title || 'Sans titre'}
+                        </button>
+                      ))}
+                      <button type="button" onClick={addFbPage} className="w-full py-2 text-xs font-bold text-blue-600 border border-dashed border-blue-300 rounded-xl">
+                        + Page
+                      </button>
+                    </div>
+
+                    {/* Page editor */}
+                    <div className="flex-1 p-4 space-y-4">
+                      {fbPages[fbActivePage] && (
+                        <>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase">Titre de la page</label>
+                            <input
+                              value={fbPages[fbActivePage].title}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setFbPages((prev) => {
+                                  const pages = [...prev];
+                                  pages[fbActivePage] = { ...pages[fbActivePage], title: v };
+                                  return pages;
+                                });
+                              }}
+                              className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-xl text-sm font-semibold"
+                            />
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              ['yes_no', 'Oui/Non'],
+                              ['select', 'Choix'],
+                              ['text', 'Texte'],
+                              ['number', 'Nombre'],
+                              ['textarea', 'Commentaire'],
+                              ['photo', 'Photo'],
+                              ['image', 'Image réf.'],
+                              ['document', 'PDF'],
+                              ['info', 'Info'],
+                              ['instruction', 'Consigne'],
+                            ].map(([type, label]) => (
+                              <button key={type} type="button" onClick={() => addFbField(type)} className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-bold text-slate-700">
+                                + {label}
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="space-y-3">
+                            {(fbPages[fbActivePage].fields || []).map((field: any, fi: number) => (
+                              <div key={field.id} className="border border-slate-200 rounded-xl p-3 space-y-2 bg-slate-50/40">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{field.type}</span>
+                                  <input
+                                    value={field.label || ''}
+                                    onChange={(e) => updateFbField(fi, 'label', e.target.value)}
+                                    className="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs"
+                                    placeholder="Libellé de la question"
+                                  />
+                                  <label className="flex items-center gap-1 text-[10px] text-slate-600">
+                                    <input type="checkbox" checked={!!field.required} onChange={(e) => updateFbField(fi, 'required', e.target.checked)} />
+                                    Requis
+                                  </label>
+                                  <button type="button" onClick={() => removeFbField(fi)} className="text-red-500 text-xs font-bold px-2">✕</button>
+                                </div>
+                                {(field.type === 'info' || field.type === 'instruction') && (
+                                  <textarea
+                                    value={field.content || ''}
+                                    onChange={(e) => updateFbField(fi, 'content', e.target.value)}
+                                    rows={3}
+                                    className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs"
+                                    placeholder="Texte affiché à l'opérateur"
+                                  />
+                                )}
+                                {field.type === 'photo' && (
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <span>Max photos</span>
+                                    <input type="number" value={field.max || 5} onChange={(e) => updateFbField(fi, 'max', Number(e.target.value) || 1)} className="w-16 px-2 py-1 border rounded-lg" />
+                                  </div>
+                                )}
+                                {(field.type === 'image' || field.type === 'document') && (
+                                  <input
+                                    value={field.url || ''}
+                                    onChange={(e) => updateFbField(fi, 'url', e.target.value)}
+                                    className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs"
+                                    placeholder="URL image ou PDF"
+                                  />
+                                )}
+                                {field.type === 'document' && (
+                                  <div className="flex gap-2">
+                                    <input value={field.fileName || ''} onChange={(e) => updateFbField(fi, 'fileName', e.target.value)} className="flex-1 px-2 py-1.5 border rounded-lg text-xs" placeholder="Nom fichier" />
+                                    <input value={field.fileSize || ''} onChange={(e) => updateFbField(fi, 'fileSize', e.target.value)} className="w-24 px-2 py-1.5 border rounded-lg text-xs" placeholder="1.5 MB" />
+                                  </div>
+                                )}
+                                {(field.type === 'select' || field.type === 'yes_no') && (
+                                  <input
+                                    value={(field.options || []).join(' | ')}
+                                    onChange={(e) => updateFbField(fi, 'options', e.target.value.split('|').map((x: string) => x.trim()).filter(Boolean))}
+                                    className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs"
+                                    placeholder="Options séparées par |"
+                                  />
+                                )}
+                              </div>
+                            ))}
+                            {(fbPages[fbActivePage].fields || []).length === 0 && (
+                              <p className="text-xs text-slate-400 text-center py-8">Ajoutez des champs avec les boutons ci-dessus.</p>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
 
           {/* ─────────────────────────────────────────────────────────────────
               TAB 3: SITES & STORES DIRECTORY
@@ -2184,6 +2537,17 @@ export default function AppRoot() {
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="text-slate-500 font-medium">Formulaire mission (multi-pages)</label>
+                  <select value={newTaskFormId} onChange={(e) => setNewTaskFormId(e.target.value)} className="w-full mt-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+                    <option value="">— Aucun (checklist simple) —</option>
+                    {forms.map((f: any) => (
+                      <option key={f.id} value={f.id}>{f.title}</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-400 mt-1">Créez des formulaires dans l&apos;API POST /forms ou le seed RDTS.</p>
+                </div>
+
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
