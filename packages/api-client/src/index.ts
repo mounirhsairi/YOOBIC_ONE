@@ -28,7 +28,7 @@ export class YoobicApiClient {
     this.getOrganizationId = fn;
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+  public async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
     const headers = new Headers(options.headers || {});
     
@@ -647,7 +647,10 @@ export class YoobicApiClient {
     return this.request<any>(`/api/v1/forms/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
   }
   async deleteForm(id: string) {
-    return this.request<any>(`/api/v1/forms/${id}`, { method: 'DELETE' });
+    return this.request<any>(`/api/v1/forms/${id}
+  async seedDemoForms() {
+    return this.request<any[]>('/api/v1/forms/seed-demos', { method: 'POST', body: '{}' });
+  }`, { method: 'DELETE' });
   }
   async getMission(taskId: string) {
     return this.request<any>(`/api/v1/missions/${taskId}`);

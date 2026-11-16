@@ -510,14 +510,37 @@ export default function AppRoot() {
   const handleLoadDemoForms = async () => {
     setActionLoading(true);
     try {
-      const res = await (apiClient as any).seedDemoForms();
-      if (res.success) {
+      let res: any;
+      if (typeof (apiClient as any).seedDemoForms === 'function') {
+        res = await (apiClient as any).seedDemoForms();
+      } else if (typeof (apiClient as any).request === 'function') {
+        res = await (apiClient as any).request('/api/v1/forms/seed-demos', { method: 'POST', body: '{}' });
+      } else {
+        const token = getStoredToken();
+        const orgId = getStoredOrgId();
+        const baseUrl = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? 'http://localhost:4000'
+          : (process.env.NEXT_PUBLIC_API_URL?.trim() || 'https://yoobic-backend.onrender.com').replace(/\/$/, '');
+        
+        const response = await fetch(`${baseUrl}/api/v1/forms/seed-demos`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(orgId ? { 'X-Organization-Id': orgId } : {}),
+          },
+          body: '{}',
+        });
+        res = await response.json();
+      }
+
+      if (res && res.success) {
         setForms(res.data || []);
         const tRes = await apiClient.getTasks();
         if (tRes.success) setTasks(tRes.data || []);
         alert('Modèles de démo RDTS chargés avec succès !');
       } else {
-        alert(res.error?.message || 'Erreur lors du chargement des démos RDTS.');
+        alert(res?.error?.message || 'Erreur lors du chargement des démos RDTS.');
       }
     } catch (err: any) {
       alert(err.message || 'Erreur réseau.');
