@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import * as authController from '../controllers/auth.controller';
 import * as orgController from '../controllers/organization.controller';
 import * as taskController from '../controllers/task.controller';
@@ -106,6 +106,7 @@ router.get('/forms/:id', authenticateToken, requireTenant, formController.getFor
 router.post('/forms', authenticateToken, requireTenant, requirePermission('tasks.manage'), formController.createForm);
 router.patch('/forms/:id', authenticateToken, requireTenant, requirePermission('tasks.manage'), formController.updateForm);
 router.delete('/forms/:id', authenticateToken, requireTenant, requirePermission('tasks.manage'), formController.deleteForm);
+router.post('/forms/seed-demos', authenticateToken, requireTenant, formController.seedDemoForms);
 router.get('/missions/:taskId', authenticateToken, requireTenant, formController.getMission);
 router.post('/missions/:taskId/start', authenticateToken, requireTenant, formController.startMission);
 router.post('/missions/:taskId/abandon', authenticateToken, requireTenant, formController.abandonMission);

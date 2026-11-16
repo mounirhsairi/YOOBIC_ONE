@@ -6,6 +6,8 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "db:migrate": "node dist/database/run-migrate.js",
+    "db:seed": "node dist/database/run-seed.js",
     "test": "jest --runInBand",
     "typecheck": "tsc --noEmit"
   },

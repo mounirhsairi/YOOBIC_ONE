@@ -209,3 +209,19 @@ export const saveMissionProgress = async (req: Request, res: Response): Promise<
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
   }
 };
+
+
+export const seedDemoForms = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orgId = req.tenant!.organizationId;
+    const { ensureDemoFormTemplates } = await import('../database/seed');
+    await ensureDemoFormTemplates(orgId);
+    const forms = await FormTemplate.findAll({
+      where: { organizationId: orgId },
+      order: [['updatedAt', 'DESC']],
+    });
+    res.json({ success: true, data: forms, message: 'Démos RDTS chargées avec succès' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: error.message } });
+  }
+};

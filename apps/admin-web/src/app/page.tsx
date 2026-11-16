@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -504,6 +504,25 @@ export default function AppRoot() {
       alert(e.message || 'Erreur réseau');
     } finally {
       setFbSaving(false);
+    }
+  };
+
+  const handleLoadDemoForms = async () => {
+    setActionLoading(true);
+    try {
+      const res = await (apiClient as any).seedDemoForms();
+      if (res.success) {
+        setForms(res.data || []);
+        const tRes = await apiClient.getTasks();
+        if (tRes.success) setTasks(tRes.data || []);
+        alert('Modèles de démo RDTS chargés avec succès !');
+      } else {
+        alert(res.error?.message || 'Erreur lors du chargement des démos RDTS.');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Erreur réseau.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -1599,20 +1618,38 @@ export default function AppRoot() {
                     Chaque modèle définit les pages et questions que l&apos;opérateur parcourt sur mobile (détail → synthèse → pages).
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={openNewFormBuilder}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-sm"
-                >
-                  + Nouveau modèle
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleLoadDemoForms}
+                    disabled={actionLoading}
+                    className="px-3 py-2 bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-semibold rounded-xl border border-violet-200 transition"
+                  >
+                    ⚡ Charger démos RDTS
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openNewFormBuilder}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-sm"
+                  >
+                    + Nouveau modèle
+                  </button>
+                </div>
               </div>
 
               {!formBuilderOpen && (
                 <div className="grid md:grid-cols-2 gap-4">
                   {forms.length === 0 && (
-                    <div className="col-span-2 bg-white border border-dashed border-slate-200 rounded-2xl p-10 text-center text-sm text-slate-500">
-                      Aucun modèle. Créez-en un ou redémarrez le backend pour charger les démos RDTS.
+                    <div className="col-span-2 bg-white border border-dashed border-slate-200 rounded-2xl p-10 text-center text-sm text-slate-500 space-y-3">
+                      <p>Aucun modèle de formulaire. Créez-en un ou chargez directement les démos RDTS.</p>
+                      <button
+                        type="button"
+                        onClick={handleLoadDemoForms}
+                        disabled={actionLoading}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold text-xs rounded-xl shadow-sm transition"
+                      >
+                        ⚡ Charger les démos RDTS
+                      </button>
                     </div>
                   )}
                   {forms.map((form: any) => {

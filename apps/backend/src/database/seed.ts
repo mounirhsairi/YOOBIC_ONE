@@ -1,3 +1,184 @@
+export const ensureDemoFormTemplates = async (organizationId: string) => {
+  const emp = await User.findOne({ where: { email: 'alex.frontline@globalretail.com' } });
+  const manager = await User.findOne({ where: { email: 'sarah.manager@globalretail.com' } });
+  const store = await Store.findOne({ where: { organizationId } });
+
+  const modelAPages = [
+    {
+      id: 'p1',
+      title: 'Des photos',
+      fields: [
+        { id: 'a1_before', type: 'photo', label: 'Avant les photos', max: 5, required: false },
+        { id: 'a1_after', type: 'photo', label: 'Après les photos', max: 5, required: false },
+        { id: 'a1_present', type: 'yes_no', label: 'Vous êtes-vous présenté à la personne responsable et avez-vous expliqué l\'objet de votre visite ?', required: true },
+      ],
+    },
+    {
+      id: 'p2',
+      title: '1/4 Feutres de mélange de palettes',
+      fields: [
+        { id: 'a2_img', type: 'image', label: 'Image de la palette', url: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800' },
+        { id: 'a2_palette', type: 'select', label: 'Palette installée à proximité des caisses ?', options: ['Oui', 'Non, condensé à la baie'], required: true },
+      ],
+    },
+    {
+      id: 'p3',
+      title: 'Boîtes Madico',
+      fields: [
+        { id: 'a3_plastic_img', type: 'image', label: 'Informations sur les boîtes en plastique', url: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=800' },
+        { id: 'a3_open', type: 'yes_no', label: 'Y a-t-il des boîtes en plastique ouvertes sur les crochets ?', required: true },
+        { id: 'a3_rona', type: 'info', label: 'Rona & Rona+ uniquement', content: 'S\'il y a un ou plusieurs présentoirs métalliques, autocollants et/ou séparateurs qui sont endommagés ou manquants, nous devons passer une commande par courriel séparé à Storelink.' },
+        { id: 'a3_damaged', type: 'yes_no', label: 'Y a-t-il des présentoirs métalliques, autocollants ou séparateurs manquants ou endommagés ?', required: true },
+      ],
+    },
+    {
+      id: 'p4',
+      title: 'Problème',
+      fields: [
+        { id: 'a4_problem', type: 'yes_no', label: 'Y a-t-il une situation problématique?', required: true },
+        { id: 'a4_time', type: 'number', label: 'Combien de temps avez-vous consacré à cette tâche ? (en minutes)', required: true },
+        { id: 'a4_comments', type: 'textarea', label: 'Commentaires/problèmes (Optionnel)', required: false },
+      ],
+    },
+  ];
+
+  const modelBPages = [
+    {
+      id: 'b1',
+      title: 'Baies',
+      fields: [
+        { id: 'b1_instr', type: 'instruction', label: 'Présentation', content: 'Présentez-vous et expliquez le but de votre visite au chef de service ou à tout associé que vous rencontrez dans le service' },
+        { id: 'b1_name', type: 'text', label: 'Quel est le nom du gestionnaire ou de l\'associé que vous avez rencontré dans le service ?', required: true },
+        { id: 'b1_photos', type: 'photo', label: 'Photos des sections avant', max: 10, required: false },
+        { id: 'b1_backroom', type: 'yes_no', label: 'Avez-vous vérifié dans l\'arrière-boutique s\'il y avait une commande qui a été reçue ?', required: true },
+        { id: 'b1_fill_instr', type: 'instruction', label: 'Rappel inventaire', content: 'Veuillez vous assurer de remplir la baie car le magasin a reçu beaucoup d\'inventaire au cours des dernières semaines' },
+        { id: 'b1_filled', type: 'yes_no', label: 'Avez-vous rempli la baie ?', required: true },
+        { id: 'b1_brochures', type: 'yes_no', label: 'Manque-t-il des brochures ou un support ?', required: true },
+      ],
+    },
+    {
+      id: 'b2',
+      title: 'PK',
+      fields: [
+        { id: 'b2_instr', type: 'instruction', label: 'Consignes PK', content: 'Veuillez vous assurer de donner un PK aux associés ou au gérant du magasin et de recueillir leurs commentaires.' },
+        { id: 'b2_doc_fr', type: 'document', label: 'Doc FR', fileName: 'VarathaneWATCO-FR-oct 2023-RDTS.pdf', fileSize: '1.5 MB', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+        { id: 'b2_doc_en', type: 'document', label: 'Doc FRA', fileName: 'VarathaneWATCO-EN-oct 2023-RDTS.pdf', fileSize: '1.6 MB', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+        { id: 'b2_provided', type: 'yes_no', label: 'Avez-vous fourni du PK ?', required: true },
+      ],
+    },
+    {
+      id: 'b3',
+      title: 'Section de l\'outil Gator',
+      fields: [
+        { id: 'b3_img', type: 'image', label: 'Section d\'outils', url: 'https://images.unsplash.com/photo-1581783342308-f792dbdd27c5?w=800' },
+        { id: 'b3_exists', type: 'yes_no', label: 'Y a-t-il cette section en magasin?', required: true },
+      ],
+    },
+    {
+      id: 'b4',
+      title: 'Section Peinture Gator',
+      fields: [
+        { id: 'b4_img', type: 'image', label: 'Paint Dept.', url: 'https://images.unsplash.com/photo-1562259949-e8e7449ec25c?w=800' },
+        { id: 'b4_exists', type: 'yes_no', label: 'Y a-t-il cette section en magasin?', required: true },
+      ],
+    },
+    {
+      id: 'b5',
+      title: 'Situation problématique',
+      fields: [
+        { id: 'b5_problem', type: 'yes_no', label: 'Situation problématique', required: true },
+        { id: 'b5_time', type: 'number', label: 'Indiquez le temps passé dans le magasin (en minute) pour cette mission', required: true },
+      ],
+    },
+  ];
+
+  let formA = await FormTemplate.findOne({ where: { organizationId, title: 'RDTS - Maintenance - Walmart - Philips' } });
+  if (!formA) {
+    formA = await FormTemplate.create({
+      organizationId,
+      title: 'RDTS - Maintenance - Walmart - Philips',
+      description: 'RDTS - Entretien - Walmart - Philips',
+      category: 'Regular Maintenance',
+      pages: modelAPages,
+      estimatedDurationMinutes: 60,
+      isActive: true,
+    });
+    console.log('[Seed] Form model A (Walmart Philips) created');
+  } else {
+    await formA.update({ pages: modelAPages, category: 'Regular Maintenance', estimatedDurationMinutes: 60, isActive: true });
+  }
+
+  let formB = await FormTemplate.findOne({ where: { organizationId, title: 'RDTS - Visite magasin - Baies & PK' } });
+  if (!formB) {
+    formB = await FormTemplate.findOne({ where: { organizationId, title: 'RDTS - Visite magasin - Baies PK' } });
+  }
+  if (!formB) {
+    formB = await FormTemplate.create({
+      organizationId,
+      title: 'RDTS - Visite magasin - Baies & PK',
+      description: 'Visite terrain : baies, PK, sections Gator et situation problématique',
+      category: 'Regular Maintenance',
+      pages: modelBPages,
+      estimatedDurationMinutes: 90,
+      isActive: true,
+    });
+    console.log('[Seed] Form model B (Baies & PK) created');
+  } else {
+    await formB.update({ pages: modelBPages, category: 'Regular Maintenance', estimatedDurationMinutes: 90, isActive: true });
+  }
+
+  if (emp) {
+    const creatorId = manager?.id || emp.id;
+    let taskA = await Task.findOne({ where: { organizationId, formTemplateId: formA.id } });
+    if (!taskA) {
+      taskA = await Task.create({
+        organizationId,
+        title: 'RDTS - Maintenance - Walmart - Philips',
+        description: 'RDTS - Entretien - Walmart - Philips',
+        instructions: 'Suivez le déroulé du formulaire étape par étape sur votre mobile.',
+        category: 'Regular Maintenance',
+        priority: 'HIGH',
+        status: 'TODO',
+        requiresValidation: true,
+        requiresPhotoEvidence: true,
+        isRecurringInstance: false,
+        estimatedDurationMinutes: 60,
+        assignedUserId: emp.id,
+        createdById: creatorId,
+        storeId: store?.id || null,
+        formTemplateId: formA.id,
+        checklist: [],
+      } as any);
+      console.log('[Seed] Demo mission task A created');
+    }
+
+    let taskB = await Task.findOne({ where: { organizationId, formTemplateId: formB.id } });
+    if (!taskB) {
+      taskB = await Task.create({
+        organizationId,
+        title: 'RDTS - Visite magasin - Baies & PK',
+        description: 'Visite terrain Baies, PK et sections produit',
+        instructions: 'Suivez le déroulé du formulaire étape par étape sur votre mobile.',
+        category: 'Regular Maintenance',
+        priority: 'HIGH',
+        status: 'TODO',
+        requiresValidation: true,
+        requiresPhotoEvidence: true,
+        isRecurringInstance: false,
+        estimatedDurationMinutes: 90,
+        assignedUserId: emp.id,
+        createdById: creatorId,
+        storeId: store?.id || null,
+        formTemplateId: formB.id,
+        checklist: [],
+      } as any);
+      console.log('[Seed] Demo mission task B created');
+    }
+  }
+
+  return { formA, formB };
+};
+
 ﻿import bcrypt from 'bcryptjs';
 import {
   User,
@@ -148,172 +329,7 @@ export const seedDatabase = async () => {
 
 
 
-      // Ensure two demo form models (Yoobic-identical structure)
-      const emp = await User.findOne({ where: { email: 'alex.frontline@globalretail.com' } });
-
-      const modelAPages = [
-        {
-          id: 'p1',
-          title: 'Des photos',
-          fields: [
-            { id: 'a1_before', type: 'photo', label: 'Avant les photos', max: 5, required: false },
-            { id: 'a1_after', type: 'photo', label: 'Après les photos', max: 5, required: false },
-            { id: 'a1_present', type: 'yes_no', label: 'Vous êtes-vous présenté à la personne responsable et avez-vous expliqué l\'objet de votre visite ?', required: true },
-          ],
-        },
-        {
-          id: 'p2',
-          title: '1/4 Feutres de mélange de palettes',
-          fields: [
-            { id: 'a2_img', type: 'image', label: 'Image de la palette', url: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800' },
-            { id: 'a2_palette', type: 'select', label: 'Palette installée à proximité des caisses ?', options: ['Oui', 'Non, condensé à la baie'], required: true },
-          ],
-        },
-        {
-          id: 'p3',
-          title: 'Boîtes Madico',
-          fields: [
-            { id: 'a3_plastic_img', type: 'image', label: 'Informations sur les boîtes en plastique', url: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=800' },
-            { id: 'a3_open', type: 'yes_no', label: 'Y a-t-il des boîtes en plastique ouvertes sur les crochets ?', required: true },
-            { id: 'a3_rona', type: 'info', label: 'Rona & Rona+ uniquement', content: 'S\'il y a un ou plusieurs présentoirs métalliques, autocollants et/ou séparateurs qui sont endommagés ou manquants, nous devons passer une commande par courriel séparé à Storelink.\nNous devons commander chaque article nécessitant :\n• une boîte métallique (présentoir)\n• Autocollant\n• Séparateurs\n\nExemple de courriel :\nRONA_42310\nPièce # F25086\nEndommagé/manquant : boite\nLargeur de la boîte (3-6-9-12 pouces) 3"' },
-            { id: 'a3_damaged', type: 'yes_no', label: 'Y a-t-il des présentoirs métalliques, autocollants ou séparateurs manquants ou endommagés ?', required: true },
-          ],
-        },
-        {
-          id: 'p4',
-          title: 'Problème',
-          fields: [
-            { id: 'a4_problem', type: 'yes_no', label: 'Y a-t-il une situation problématique?', required: true },
-            { id: 'a4_time', type: 'number', label: 'Combien de temps avez-vous consacré à cette tâche ? (en minutes)', required: true },
-            { id: 'a4_comments', type: 'textarea', label: 'Commentaires/problèmes (Optionnel)', required: false },
-          ],
-        },
-      ];
-
-      const modelBPages = [
-        {
-          id: 'b1',
-          title: 'Baies',
-          fields: [
-            { id: 'b1_instr', type: 'instruction', label: 'Présentation', content: 'Présentez-vous et expliquez le but de votre visite au chef de service ou à tout associé que vous rencontrez dans le service' },
-            { id: 'b1_name', type: 'text', label: 'Quel est le nom du gestionnaire ou de l\'associé que vous avez rencontré dans le service ?', required: true },
-            { id: 'b1_photos', type: 'photo', label: 'Photos des sections avant', max: 10, required: false },
-            { id: 'b1_backroom', type: 'yes_no', label: 'Avez-vous vérifié dans l\'arrière-boutique s\'il y avait une commande qui a été reçue ?', required: true },
-            { id: 'b1_fill_instr', type: 'instruction', label: 'Rappel inventaire', content: 'Veuillez vous assurer de remplir la baie car le magasin a reçu beaucoup d\'inventaire au cours des dernières semaines' },
-            { id: 'b1_filled', type: 'yes_no', label: 'Avez-vous rempli la baie ?', required: true },
-            { id: 'b1_brochures', type: 'yes_no', label: 'Manque-t-il des brochures ou un support ?', required: true },
-          ],
-        },
-        {
-          id: 'b2',
-          title: 'PK',
-          fields: [
-            { id: 'b2_instr', type: 'instruction', label: 'Consignes PK', content: 'Veuillez vous assurer de donner un PK aux associés ou au gérant du magasin et de recueillir leurs commentaires.' },
-            { id: 'b2_doc_fr', type: 'document', label: 'Doc FR', fileName: 'VarathaneWATCO-FR-oct 2023-RDTS.pdf', fileSize: '1.5 MB', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-            { id: 'b2_doc_en', type: 'document', label: 'Doc FRA', fileName: 'VarathaneWATCO-EN-oct 2023-RDTS.pdf', fileSize: '1.6 MB', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-            { id: 'b2_provided', type: 'yes_no', label: 'Avez-vous fourni du PK ?', required: true },
-          ],
-        },
-        {
-          id: 'b3',
-          title: 'Section de l\'outil Gator',
-          fields: [
-            { id: 'b3_img', type: 'image', label: 'Section d\'outils', url: 'https://images.unsplash.com/photo-1581783342308-f792dbdd27c5?w=800' },
-            { id: 'b3_exists', type: 'yes_no', label: 'Y a-t-il cette section en magasin?', required: true },
-          ],
-        },
-        {
-          id: 'b4',
-          title: 'Section Peinture Gator',
-          fields: [
-            { id: 'b4_img', type: 'image', label: 'Paint Dept.', url: 'https://images.unsplash.com/photo-1562259949-e8e7449ec25c?w=800' },
-            { id: 'b4_exists', type: 'yes_no', label: 'Y a-t-il cette section en magasin?', required: true },
-          ],
-        },
-        {
-          id: 'b5',
-          title: 'Situation problématique',
-          fields: [
-            { id: 'b5_problem', type: 'yes_no', label: 'Situation problématique', required: true },
-            { id: 'b5_time', type: 'number', label: 'Indiquez le temps passé dans le magasin (en minute) pour cette mission', required: true },
-          ],
-        },
-      ];
-
-      let formA = await FormTemplate.findOne({ where: { organizationId: existingOrg.id, title: 'RDTS - Maintenance - Walmart - Philips' } });
-      if (!formA) {
-        formA = await FormTemplate.create({
-          organizationId: existingOrg.id,
-          title: 'RDTS - Maintenance - Walmart - Philips',
-          description: 'RDTS - Entretien - Walmart - Philips',
-          category: 'Regular Maintenance',
-          pages: modelAPages,
-          estimatedDurationMinutes: 60,
-          isActive: true,
-        });
-        console.log('[Seed] Form model A (Walmart Philips) created');
-      } else {
-        await formA.update({ pages: modelAPages, category: 'Regular Maintenance', estimatedDurationMinutes: 60, isActive: true });
-      }
-
-      let formB = await FormTemplate.findOne({ where: { organizationId: existingOrg.id, title: 'RDTS - Visite magasin - Baies & PK' } });
-      if (!formB) {
-        formB = await FormTemplate.create({
-          organizationId: existingOrg.id,
-          title: 'RDTS - Visite magasin - Baies & PK',
-          description: 'Visite terrain : baies, PK, sections Gator et situation problématique',
-          category: 'Regular Maintenance',
-          pages: modelBPages,
-          estimatedDurationMinutes: 90,
-          isActive: true,
-        });
-        console.log('[Seed] Form model B (Baies & PK) created');
-      } else {
-        await formB.update({ pages: modelBPages, category: 'Regular Maintenance', estimatedDurationMinutes: 90, isActive: true });
-      }
-
-      if (emp) {
-        const store = await Store.findOne({ where: { organizationId: existingOrg.id } });
-        // Task for model A
-        let taskA = await Task.findOne({ where: { organizationId: existingOrg.id, formTemplateId: formA.id } });
-        if (!taskA) {
-          taskA = await Task.create({
-            organizationId: existingOrg.id,
-            title: 'RDTS - Maintenance - Walmart - Philips',
-            description: 'RDTS - Entretien - Walmart - Philips',
-            category: 'Regular Maintenance',
-            priority: 'HIGH',
-            status: 'TODO',
-            requiresValidation: true,
-            estimatedDurationMinutes: 60,
-            assignedUserId: emp.id,
-            createdById: emp.id,
-            storeId: store?.id || null,
-            formTemplateId: formA.id,
-            checklist: [],
-          } as any);
-        }
-        // Task for model B
-        let taskB = await Task.findOne({ where: { organizationId: existingOrg.id, formTemplateId: formB.id } });
-        if (!taskB) {
-          taskB = await Task.create({
-            organizationId: existingOrg.id,
-            title: 'RDTS - Visite magasin - Baies & PK',
-            description: 'Visite terrain Baies, PK et sections produit',
-            category: 'Regular Maintenance',
-            priority: 'HIGH',
-            status: 'TODO',
-            requiresValidation: true,
-            estimatedDurationMinutes: 90,
-            assignedUserId: emp.id,
-            createdById: emp.id,
-            storeId: store?.id || null,
-            formTemplateId: formB.id,
-            checklist: [],
-          } as any);
-        }
-      }
-
+      await ensureDemoFormTemplates(existingOrg.id);
 
       console.log('[Seed] Database already seeded and up-to-date.');
       
@@ -802,121 +818,7 @@ export const seedDatabase = async () => {
       createdById: manager.id,
     });
 
-    // 11. Demo Form Templates (RDTS missions)
-    const ftModelAPages = [
-      {
-        id: 'p1', title: 'Des photos',
-        fields: [
-          { id: 'a1_before', type: 'photo', label: 'Avant les photos', max: 5, required: false },
-          { id: 'a1_after', type: 'photo', label: 'Apres les photos', max: 5, required: false },
-          { id: 'a1_present', type: 'yes_no', label: 'Vous etes-vous presente a la personne responsable ?', required: true },
-        ],
-      },
-      {
-        id: 'p2', title: '1/4 Feutres de melange de palettes',
-        fields: [
-          { id: 'a2_img', type: 'image', label: 'Image de la palette', url: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800' },
-          { id: 'a2_palette', type: 'select', label: 'Palette installee a proximite des caisses ?', options: ['Oui', 'Non, condense a la baie'], required: true },
-        ],
-      },
-      {
-        id: 'p3', title: 'Boites Madico',
-        fields: [
-          { id: 'a3_plastic_img', type: 'image', label: 'Informations sur les boites en plastique', url: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=800' },
-          { id: 'a3_open', type: 'yes_no', label: 'Y a-t-il des boites en plastique ouvertes sur les crochets ?', required: true },
-          { id: 'a3_damaged', type: 'yes_no', label: 'Y a-t-il des presentoirs metalliques endommages ou manquants ?', required: true },
-        ],
-      },
-      {
-        id: 'p4', title: 'Probleme',
-        fields: [
-          { id: 'a4_problem', type: 'yes_no', label: 'Y a-t-il une situation problematique?', required: true },
-          { id: 'a4_time', type: 'number', label: 'Combien de temps avez-vous consacre a cette tache ? (en minutes)', required: true },
-          { id: 'a4_comments', type: 'textarea', label: 'Commentaires/problemes (Optionnel)', required: false },
-        ],
-      },
-    ];
-
-    const ftModelBPages = [
-      {
-        id: 'b1', title: 'Baies',
-        fields: [
-          { id: 'b1_name', type: 'text', label: 'Quel est le nom du gestionnaire rencontre dans le service ?', required: true },
-          { id: 'b1_photos', type: 'photo', label: 'Photos des sections avant', max: 10, required: false },
-          { id: 'b1_backroom', type: 'yes_no', label: 'Avez-vous verifie dans l arriere-boutique ?', required: true },
-          { id: 'b1_filled', type: 'yes_no', label: 'Avez-vous rempli la baie ?', required: true },
-          { id: 'b1_brochures', type: 'yes_no', label: 'Manque-t-il des brochures ou un support ?', required: true },
-        ],
-      },
-      {
-        id: 'b2', title: 'PK',
-        fields: [
-          { id: 'b2_doc_fr', type: 'document', label: 'Doc FR', fileName: 'VarathaneWATCO-FR-oct 2023-RDTS.pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-          { id: 'b2_provided', type: 'yes_no', label: 'Avez-vous fourni du PK ?', required: true },
-        ],
-      },
-      {
-        id: 'b3', title: 'Situation problematique',
-        fields: [
-          { id: 'b3_problem', type: 'yes_no', label: 'Situation problematique', required: true },
-          { id: 'b3_time', type: 'number', label: 'Temps passe dans le magasin (en minute)', required: true },
-        ],
-      },
-    ];
-
-    const formA = await FormTemplate.create({
-      organizationId: org.id,
-      title: 'RDTS - Maintenance - Walmart - Philips',
-      description: 'RDTS - Entretien - Walmart - Philips',
-      category: 'Regular Maintenance',
-      pages: ftModelAPages,
-      estimatedDurationMinutes: 60,
-      isActive: true,
-    });
-    console.log('[Seed] Form model A (Walmart Philips) created');
-
-    const formB = await FormTemplate.create({
-      organizationId: org.id,
-      title: 'RDTS - Visite magasin - Baies PK',
-      description: 'Visite terrain : baies, PK, sections Gator et situation problematique',
-      category: 'Regular Maintenance',
-      pages: ftModelBPages,
-      estimatedDurationMinutes: 90,
-      isActive: true,
-    });
-    console.log('[Seed] Form model B (Baies PK) created');
-
-    await Task.create({
-      organizationId: org.id,
-      title: 'RDTS - Maintenance - Walmart - Philips',
-      description: 'RDTS - Entretien - Walmart - Philips',
-      category: 'Regular Maintenance',
-      priority: 'HIGH',
-      status: 'TODO',
-      requiresValidation: true,
-      estimatedDurationMinutes: 60,
-      assignedUserId: employee.id,
-      createdById: employee.id,
-      storeId: store1.id,
-      formTemplateId: formA.id,
-      checklist: [],
-    } as any);
-
-    await Task.create({
-      organizationId: org.id,
-      title: 'RDTS - Visite magasin - Baies PK',
-      description: 'Visite terrain Baies, PK et sections produit',
-      category: 'Regular Maintenance',
-      priority: 'HIGH',
-      status: 'TODO',
-      requiresValidation: true,
-      estimatedDurationMinutes: 90,
-      assignedUserId: employee.id,
-      createdById: employee.id,
-      storeId: store1.id,
-      formTemplateId: formB.id,
-      checklist: [],
-    } as any);
+    await ensureDemoFormTemplates(org.id);
 
     console.log('[Seed] Demonstration data successfully loaded into database.');
   } catch (error) {

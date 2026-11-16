@@ -1,4 +1,4 @@
-import { ApiResponse, AuthSessionResponse, Task, User, Organization } from '@yoobic/shared-types';
+﻿import { ApiResponse, AuthSessionResponse, Task, User, Organization } from '@yoobic/shared-types';
 
 export interface ApiClientConfig {
   baseUrl: string;
